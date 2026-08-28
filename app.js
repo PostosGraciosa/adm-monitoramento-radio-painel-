@@ -1,207 +1,1384 @@
+/* =========================================================
+   PAINEL DE MONITORAMENTO DE RÁDIO
+   POSTOS GRACIOSA
+   APP.JS
+========================================================= */
+
+
+/* =========================================================
+   CONFIGURAÇÕES
+========================================================= */
+
 const CONFIG = {
 
-```
-API_URL:
-    "",
+    /* URL DO GOOGLE APPS SCRIPT
+       COLOCAR A URL DA IMPLANTAÇÃO AQUI
+    */
 
-INTERVALO_ATUALIZACAO:
-    30000,
+    API_URL:
+        "",
 
-LIMITE_HISTORICO:
-    100,
 
-STORAGE_PREFIX:
-    "adm_monitoramento_radio_painel_v1"
-```
+    /* TEMPO ENTRE ATUALIZAÇÕES AUTOMÁTICAS */
+
+    INTERVALO_ATUALIZACAO:
+        60000,
+
+
+    /* CHAVE UTILIZADA NO SISTEMA */
+
+    CHAVE:
+        "GRACIOSA_RADIO_2026",
+
+
+    /* LIMITE DO HISTÓRICO EXIBIDO */
+
+    LIMITE_HISTORICO:
+        100,
+
+
+    /* STORAGE LOCAL DO PAINEL */
+
+    STORAGE:
+        "painel_monitoramento_radio_v1"
 
 };
 
+
+
 /* =========================================================
-POSTOS
+   POSTOS
 ========================================================= */
 
 const POSTOS = [
 
-```
-{
-    codigo: "graciosa",
-    nome: "POSTO GRACIOSA"
-},
+    {
+        codigo:
+            "graciosa",
 
-{
-    codigo: "fatima",
-    nome: "POSTO FÁTIMA"
-},
+        nome:
+            "POSTO GRACIOSA",
 
-{
-    codigo: "jariva",
-    nome: "POSTO JARIVA"
-},
+        icone:
+            "⛽"
+    },
 
-{
-    codigo: "bemer",
-    nome: "POSTO BEMER"
-},
 
-{
-    codigo: "graciosa-v",
-    nome: "POSTO GRACIOSA V"
-},
+    {
+        codigo:
+            "fatima",
 
-{
-    codigo: "pirai",
-    nome: "POSTO PIRAÍ"
-}
-```
+        nome:
+            "POSTO FÁTIMA",
+
+        icone:
+            "⛽"
+    },
+
+
+    {
+        codigo:
+            "jariva",
+
+        nome:
+            "POSTO JARIVA",
+
+        icone:
+            "⛽"
+    },
+
+
+    {
+        codigo:
+            "bemer",
+
+        nome:
+            "POSTO BEMER",
+
+        icone:
+            "⛽"
+    },
+
+
+    {
+        codigo:
+            "graciosa-v",
+
+        nome:
+            "POSTO GRACIOSA V",
+
+        icone:
+            "⛽"
+    },
+
+
+    {
+        codigo:
+            "pirai",
+
+        nome:
+            "POSTO PIRAÍ",
+
+        icone:
+            "⛽"
+    }
 
 ];
 
+
+
 /* =========================================================
-ESTADO
+   ESTADO DO SISTEMA
 ========================================================= */
 
 let dadosPostos = {};
 
+let historicos = {};
+
+let ultimaAtualizacao = null;
+
 let atualizando = false;
 
-let ultimoAtualizacao = null;
 
-let temporizador = null;
 
 /* =========================================================
-INICIALIZAÇÃO
+   INICIALIZAR ESTADO
 ========================================================= */
 
-document.addEventListener(
-"DOMContentLoaded",
-function () {
+function criarEstadoInicial() {
 
-```
-    inicializarPainel();
+    POSTOS.forEach(
 
-}
-```
+        posto => {
 
-);
-
-/* =========================================================
-INICIALIZAR PAINEL
-========================================================= */
-
-function inicializarPainel() {
-
-```
-prepararEstadoInicial();
-
-renderizarPainel();
-
-configurarEventos();
-
-atualizarRelogio();
-
-setInterval(
-    atualizarRelogio,
-    1000
-);
-
-iniciarAtualizacaoAutomatica();
-
-atualizarPainel();
-```
-
-}
-
-/* =========================================================
-PREPARAR ESTADO INICIAL
-========================================================= */
-
-function prepararEstadoInicial() {
-
-```
-POSTOS.forEach(
-    function (posto) {
-
-        dadosPostos[
-            posto.codigo
-        ] = {
-
-            codigo:
-                posto.codigo,
-
-            nome:
-                posto.nome,
-
-            status:
-                "aguardando",
-
-            atividade:
-                "Aguardando atualização",
-
-            evento:
-                "Nenhum evento recebido",
-
-            dataHora:
-                "--/--/---- às --:--:--",
-
-            timestamp:
-                0,
-
-            historico:
-                carregarHistorico(
+            if (
+                !dadosPostos[
                     posto.codigo
-                )
+                ]
+            ) {
 
-        };
+                dadosPostos[
+                    posto.codigo
+                ] = {
 
-    }
-);
-```
+                    codigo:
+                        posto.codigo,
 
-}
+                    nome:
+                        posto.nome,
 
-/* =========================================================
-EVENTOS
-========================================================= */
+                    status:
+                        "verificando",
 
-function configurarEventos() {
+                    evento:
+                        "Aguardando atualização",
 
-```
-const botaoAtualizar =
-    document.getElementById(
-        "btnAtualizar"
-    );
+                    dataHora:
+                        "--/--/---- às --:--:--",
+
+                    timestamp:
+                        0
+
+                };
+
+            }
 
 
-if (
-    botaoAtualizar
-) {
+            if (
+                !historicos[
+                    posto.codigo
+                ]
+            ) {
 
-    botaoAtualizar.addEventListener(
-        "click",
-        function () {
+                historicos[
+                    posto.codigo
+                ] = [];
 
-            atualizarPainel(
-                true
-            );
+            }
 
         }
+
     );
 
 }
 
 
-document.addEventListener(
-    "click",
-    function (evento) {
 
-        const botao =
-            evento.target.closest(
-                "[data-atualizar]"
+/* =========================================================
+   STORAGE
+========================================================= */
+
+function carregarStorage() {
+
+    try {
+
+        const dados =
+            localStorage.getItem(
+                CONFIG.STORAGE
             );
 
 
         if (
-            !botao
+            !dados
+        ) {
+
+            criarEstadoInicial();
+
+            return;
+
+        }
+
+
+        const armazenado =
+            JSON.parse(
+                dados
+            );
+
+
+        if (
+            armazenado.postos
+        ) {
+
+            dadosPostos =
+                armazenado.postos;
+
+        }
+
+
+        if (
+            armazenado.historicos
+        ) {
+
+            historicos =
+                armazenado.historicos;
+
+        }
+
+    }
+
+    catch (
+        erro
+    ) {
+
+        console.warn(
+            "Não foi possível carregar o armazenamento local.",
+            erro
+        );
+
+
+        criarEstadoInicial();
+
+    }
+
+}
+
+
+
+/* =========================================================
+   SALVAR STORAGE
+========================================================= */
+
+function salvarStorage() {
+
+    try {
+
+        localStorage.setItem(
+
+            CONFIG.STORAGE,
+
+            JSON.stringify({
+
+                postos:
+                    dadosPostos,
+
+                historicos:
+                    historicos,
+
+                ultimaAtualizacao:
+                    ultimaAtualizacao
+
+            })
+
+        );
+
+    }
+
+    catch (
+        erro
+    ) {
+
+        console.warn(
+            "Não foi possível salvar o armazenamento local.",
+            erro
+        );
+
+    }
+
+}
+
+
+
+/* =========================================================
+   ELEMENTOS
+========================================================= */
+
+function elemento(
+    id
+) {
+
+    return document.getElementById(
+        id
+    );
+
+}
+
+
+
+/* =========================================================
+   RELÓGIO
+========================================================= */
+
+function atualizarRelogio() {
+
+    const agora =
+        new Date();
+
+
+    const clock =
+        elemento(
+            "clock"
+        );
+
+
+    const date =
+        elemento(
+            "date"
+        );
+
+
+    if (
+        clock
+    ) {
+
+        clock.textContent =
+            agora.toLocaleTimeString(
+                "pt-BR"
+            );
+
+    }
+
+
+    if (
+        date
+    ) {
+
+        date.textContent =
+            agora.toLocaleDateString(
+                "pt-BR",
+                {
+
+                    weekday:
+                        "long",
+
+                    day:
+                        "2-digit",
+
+                    month:
+                        "long",
+
+                    year:
+                        "numeric"
+
+                }
+            );
+
+    }
+
+}
+
+
+
+/* =========================================================
+   DATA/HORA
+========================================================= */
+
+function obterDataHora() {
+
+    const agora =
+        new Date();
+
+
+    return (
+
+        agora.toLocaleDateString(
+            "pt-BR"
+        )
+
+        +
+
+        " às "
+
+        +
+
+        agora.toLocaleTimeString(
+            "pt-BR"
+        )
+
+    );
+
+}
+
+
+
+/* =========================================================
+   FORMATAÇÃO
+========================================================= */
+
+function formatarDataHora(
+    timestamp
+) {
+
+    if (
+        !timestamp
+    ) {
+
+        return "--/--/---- às --:--:--";
+
+    }
+
+
+    const data =
+        new Date(
+            Number(
+                timestamp
+            )
+        );
+
+
+    if (
+        Number.isNaN(
+            data.getTime()
+        )
+    ) {
+
+        return "--/--/---- às --:--:--";
+
+    }
+
+
+    return (
+
+        data.toLocaleDateString(
+            "pt-BR"
+        )
+
+        +
+
+        " às "
+
+        +
+
+        data.toLocaleTimeString(
+            "pt-BR"
+        )
+
+    );
+
+}
+
+
+
+/* =========================================================
+   NORMALIZAR STATUS
+========================================================= */
+
+function normalizarStatus(
+    status
+) {
+
+    const valor =
+        String(
+            status || ""
+        )
+        .trim()
+        .toLowerCase();
+
+
+    if (
+        valor ===
+        "online"
+    ) {
+
+        return "online";
+
+    }
+
+
+    if (
+        valor ===
+        "ativo"
+    ) {
+
+        return "online";
+
+    }
+
+
+    if (
+        valor ===
+        "playing"
+    ) {
+
+        return "online";
+
+    }
+
+
+    if (
+        valor ===
+        "offline"
+    ) {
+
+        return "offline";
+
+    }
+
+
+    if (
+        valor ===
+        "pausado"
+    ) {
+
+        return "pausado";
+
+    }
+
+
+    if (
+        valor ===
+        "paused"
+    ) {
+
+        return "pausado";
+
+    }
+
+
+    if (
+        valor ===
+        "verificando"
+    ) {
+
+        return "verificando";
+
+    }
+
+
+    if (
+        valor ===
+        "waiting"
+    ) {
+
+        return "verificando";
+
+    }
+
+
+    return "verificando";
+
+}
+
+
+
+/* =========================================================
+   TEXTO DO STATUS
+========================================================= */
+
+function textoStatus(
+    status
+) {
+
+    switch (
+        normalizarStatus(
+            status
+        )
+    ) {
+
+        case "online":
+
+            return "ATIVO";
+
+
+        case "pausado":
+
+            return "PAUSADO";
+
+
+        case "offline":
+
+            return "OFFLINE";
+
+
+        default:
+
+            return "VERIFICANDO";
+
+    }
+
+}
+
+
+
+/* =========================================================
+   ÍCONE DO STATUS
+========================================================= */
+
+function iconeStatus(
+    status
+) {
+
+    switch (
+        normalizarStatus(
+            status
+        )
+    ) {
+
+        case "online":
+
+            return "🟢";
+
+
+        case "pausado":
+
+            return "🟡";
+
+
+        case "offline":
+
+            return "🔴";
+
+
+        default:
+
+            return "🔵";
+
+    }
+
+}
+
+
+
+/* =========================================================
+   CLASSE DO STATUS
+========================================================= */
+
+function classeStatus(
+    status
+) {
+
+    switch (
+        normalizarStatus(
+            status
+        )
+    ) {
+
+        case "online":
+
+            return "online";
+
+
+        case "pausado":
+
+            return "paused";
+
+
+        case "offline":
+
+            return "offline";
+
+
+        default:
+
+            return "checking";
+
+    }
+
+}
+
+
+
+/* =========================================================
+   RENDERIZAR POSTOS
+========================================================= */
+
+function renderizarPostos() {
+
+    const container =
+        elemento(
+            "postosGrid"
+        );
+
+
+    if (
+        !container
+    ) {
+
+        console.warn(
+            "Elemento #postosGrid não encontrado."
+        );
+
+        return;
+
+    }
+
+
+    container.innerHTML =
+        POSTOS
+        .map(
+
+            posto => {
+
+                const dados =
+                    dadosPostos[
+                        posto.codigo
+                    ];
+
+
+                const status =
+                    normalizarStatus(
+                        dados.status
+                    );
+
+
+                const ultimoEvento =
+                    dados.evento ||
+                    "Nenhum evento registrado.";
+
+
+                const dataHora =
+                    dados.dataHora ||
+                    "--/--/---- às --:--:--";
+
+
+                return `
+
+                    <article
+                        class="station-card ${classeStatus(status)}"
+                        data-posto="${posto.codigo}"
+                    >
+
+
+                        <div class="station-card-header">
+
+
+                            <div class="station-title-area">
+
+
+                                <div class="station-icon">
+                                    ${posto.icone}
+                                </div>
+
+
+                                <div>
+
+                                    <div class="station-name">
+                                        ${posto.nome}
+                                    </div>
+
+
+                                    <div class="station-code">
+                                        Código: ${posto.codigo}
+                                    </div>
+
+                                </div>
+
+
+                            </div>
+
+
+                            <div class="station-status ${classeStatus(status)}">
+
+                                <span class="status-dot"></span>
+
+                                ${textoStatus(status)}
+
+                            </div>
+
+
+                        </div>
+
+
+
+                        <div class="station-content">
+
+
+                            <div class="activity">
+
+
+                                <div class="activity-label">
+                                    ATIVIDADE ATUAL
+                                </div>
+
+
+                                <div class="activity-value">
+                                    ${iconeStatus(status)}
+                                    ${escapeHTML(ultimoEvento)}
+                                </div>
+
+
+                            </div>
+
+
+
+                            <div class="last-update">
+
+
+                                <div class="activity-label">
+                                    ÚLTIMA ATUALIZAÇÃO
+                                </div>
+
+
+                                <div class="last-update-value">
+                                    ${escapeHTML(dataHora)}
+                                </div>
+
+
+                            </div>
+
+
+                        </div>
+
+
+
+                        <div class="station-card-footer">
+
+
+                            <button
+                                type="button"
+                                class="history-button"
+                                data-action="history"
+                                data-posto="${posto.codigo}"
+                            >
+
+                                📋
+
+                                Histórico
+
+                            </button>
+
+
+                            <button
+                                type="button"
+                                class="refresh-station-button"
+                                data-action="refresh"
+                                data-posto="${posto.codigo}"
+                            >
+
+                                ↻
+
+                                Atualizar
+
+                            </button>
+
+
+                        </div>
+
+
+                    </article>
+
+                `;
+
+            }
+
+        )
+        .join("");
+
+
+    configurarBotoesPostos();
+
+}
+
+
+
+/* =========================================================
+   CONFIGURAR BOTÕES DOS POSTOS
+========================================================= */
+
+function configurarBotoesPostos() {
+
+    const botoes =
+        document.querySelectorAll(
+            "[data-action]"
+        );
+
+
+    botoes.forEach(
+
+        botao => {
+
+            botao.addEventListener(
+
+                "click",
+
+                function () {
+
+                    const acao =
+                        this.dataset.action;
+
+
+                    const codigo =
+                        this.dataset.posto;
+
+
+                    if (
+                        acao ===
+                        "history"
+                    ) {
+
+                        abrirHistorico(
+                            codigo
+                        );
+
+                    }
+
+
+                    if (
+                        acao ===
+                        "refresh"
+                    ) {
+
+                        atualizarPosto(
+                            codigo
+                        );
+
+                    }
+
+                }
+
+            );
+
+        }
+
+    );
+
+}
+
+
+
+/* =========================================================
+   ATUALIZAR UM POSTO
+========================================================= */
+
+async function atualizarPosto(
+    codigo
+) {
+
+    const posto =
+        POSTOS.find(
+            item =>
+                item.codigo ===
+                codigo
+        );
+
+
+    if (
+        !posto
+    ) {
+
+        return;
+
+    }
+
+
+    mostrarStatusMensagem(
+        "Consultando " +
+        posto.nome +
+        "..."
+    );
+
+
+    const botao =
+        document.querySelector(
+
+            `[data-action="refresh"][data-posto="${codigo}"]`
+
+        );
+
+
+    if (
+        botao
+    ) {
+
+        botao.disabled =
+            true;
+
+        botao.classList.add(
+            "loading"
+        );
+
+    }
+
+
+    try {
+
+        const resultado =
+            await consultarAPI(
+                codigo
+            );
+
+
+        if (
+            resultado
+        ) {
+
+            aplicarResultadoPosto(
+                codigo,
+                resultado,
+                true
+            );
+
+        }
+
+        else {
+
+            mostrarStatusMensagem(
+                "Não foi possível consultar o status atual."
+            );
+
+        }
+
+    }
+
+    catch (
+        erro
+    ) {
+
+        console.error(
+            erro
+        );
+
+
+        mostrarStatusMensagem(
+            "Erro ao consultar o posto."
+        );
+
+    }
+
+
+    finally {
+
+        if (
+            botao
+        ) {
+
+            botao.disabled =
+                false;
+
+            botao.classList.remove(
+                "loading"
+            );
+
+        }
+
+    }
+
+}
+
+
+
+/* =========================================================
+   ATUALIZAR TODOS
+========================================================= */
+
+async function atualizarTodos() {
+
+    if (
+        atualizando
+    ) {
+
+        return;
+
+    }
+
+
+    atualizando =
+        true;
+
+
+    const botao =
+        elemento(
+            "btnAtualizar"
+        );
+
+
+    if (
+        botao
+    ) {
+
+        botao.disabled =
+            true;
+
+        botao.classList.add(
+            "loading"
+        );
+
+    }
+
+
+    mostrarStatusMensagem(
+        "Atualizando status dos 6 postos..."
+    );
+
+
+    try {
+
+        const resultado =
+            await consultarAPI();
+
+
+        if (
+            resultado &&
+            Array.isArray(
+                resultado.postos
+            )
+        ) {
+
+            resultado.postos.forEach(
+
+                dados => {
+
+                    aplicarResultadoPosto(
+                        dados.codigo,
+                        dados,
+                        true
+                    );
+
+                }
+
+            );
+
+        }
+
+        else if (
+            resultado
+        ) {
+
+            aplicarResultadoPosto(
+                resultado.codigo,
+                resultado,
+                true
+            );
+
+        }
+
+
+        ultimaAtualizacao =
+            Date.now();
+
+
+        salvarStorage();
+
+
+        renderizarTudo();
+
+
+        mostrarStatusMensagem(
+
+            "Status atualizado em " +
+            formatarDataHora(
+                ultimaAtualizacao
+            )
+
+        );
+
+    }
+
+    catch (
+        erro
+    ) {
+
+        console.error(
+            "Erro na atualização:",
+            erro
+        );
+
+
+        mostrarStatusMensagem(
+            "Não foi possível consultar o servidor."
+        );
+
+    }
+
+
+    finally {
+
+        atualizando =
+            false;
+
+
+        if (
+            botao
+        ) {
+
+            botao.disabled =
+                false;
+
+            botao.classList.remove(
+                "loading"
+            );
+
+        }
+
+    }
+
+}
+
+
+
+/* =========================================================
+   CONSULTAR API
+========================================================= */
+
+async function consultarAPI(
+    codigo = ""
+) {
+
+    if (
+        !CONFIG.API_URL
+    ) {
+
+        console.warn(
+            "API_URL ainda não configurada."
+        );
+
+
+        /*
+           Enquanto a URL do Apps Script
+           não estiver configurada,
+           usamos os dados armazenados
+           no navegador.
+        */
+
+        return {
+
+            modo:
+                "local",
+
+            codigo:
+                codigo
+
+        };
+
+    }
+
+
+    let url =
+        CONFIG.API_URL;
+
+
+    const parametros =
+        new URLSearchParams();
+
+
+    parametros.set(
+        "acao",
+        "status"
+    );
+
+
+    parametros.set(
+        "chave",
+        CONFIG.CHAVE
+    );
+
+
+    if (
+        codigo
+    ) {
+
+        parametros.set(
+            "posto",
+            codigo
+        );
+
+    }
+
+
+    url +=
+        "?" +
+        parametros.toString();
+
+
+    const resposta =
+        await fetch(
+            url,
+            {
+
+                method:
+                    "GET",
+
+                cache:
+                    "no-store"
+
+            }
+        );
+
+
+    if (
+        !resposta.ok
+    ) {
+
+        throw new Error(
+            "HTTP " +
+            resposta.status
+        );
+
+    }
+
+
+    const dados =
+        await resposta.json();
+
+
+    return dados;
+
+}
+
+
+
+/* =========================================================
+   APLICAR RESULTADO
+========================================================= */
+
+function aplicarResultadoPosto(
+    codigo,
+    resultado,
+    registrar
+) {
+
+    if (
+        !codigo
+    ) {
+
+        return;
+
+    }
+
+
+    if (
+        !dadosPostos[codigo]
+    ) {
+
+        const posto =
+            POSTOS.find(
+                item =>
+                    item.codigo ===
+                    codigo
+            );
+
+
+        if (
+            !posto
         ) {
 
             return;
@@ -209,2029 +1386,1019 @@ document.addEventListener(
         }
 
 
-        const codigo =
-            botao.getAttribute(
-                "data-atualizar"
-            );
+        dadosPostos[codigo] = {
 
-
-        atualizarPosto(
-            codigo
-        );
-
-    }
-);
-```
-
-}
-
-/* =========================================================
-ATUALIZAÇÃO AUTOMÁTICA
-========================================================= */
-
-function iniciarAtualizacaoAutomatica() {
-
-```
-if (
-    temporizador
-) {
-
-    clearInterval(
-        temporizador
-    );
-
-}
-
-
-temporizador =
-    setInterval(
-        function () {
-
-            atualizarPainel();
-
-        },
-        CONFIG.INTERVALO_ATUALIZACAO
-    );
-```
-
-}
-
-/* =========================================================
-ATUALIZAR PAINEL
-========================================================= */
-
-async function atualizarPainel() {
-
-```
-if (
-    atualizando
-) {
-
-    return;
-
-}
-
-
-atualizando =
-    true;
-
-
-definirIndicadorAtualizacao(
-    true
-);
-
-
-try {
-
-    if (
-        !CONFIG.API_URL
-    ) {
-
-        carregarDadosLocais();
-
-        ultimoAtualizacao =
-            new Date();
-
-        renderizarPainel();
-
-        atualizarConexao(
-            "local"
-        );
-
-        return;
-
-    }
-
-
-    const resposta =
-        await fetch(
-            CONFIG.API_URL +
-            "?acao=status&t=" +
-            Date.now(),
-            {
-
-                method:
-                    "GET",
-
-                cache:
-                    "no-store"
-
-            }
-        );
-
-
-    if (
-        !resposta.ok
-    ) {
-
-        throw new Error(
-            "Erro HTTP " +
-            resposta.status
-        );
-
-    }
-
-
-    const dados =
-        await resposta.json();
-
-
-    processarResposta(
-        dados
-    );
-
-
-    ultimoAtualizacao =
-        new Date();
-
-
-    renderizarPainel();
-
-    atualizarConexao(
-        "online"
-    );
-
-}
-
-catch (
-    erro
-) {
-
-    console.error(
-        "Erro ao atualizar painel:",
-        erro
-    );
-
-
-    carregarDadosLocais();
-
-    renderizarPainel();
-
-    atualizarConexao(
-        "erro"
-    );
-
-}
-
-finally {
-
-    atualizando =
-        false;
-
-
-    definirIndicadorAtualizacao(
-        false
-    );
-
-}
-```
-
-}
-
-/* =========================================================
-ATUALIZAR POSTO INDIVIDUAL
-========================================================= */
-
-async function atualizarPosto(
-codigo
-) {
-
-```
-const posto =
-    dadosPostos[
-        codigo
-    ];
-
-
-if (
-    !posto
-) {
-
-    return;
-
-}
-
-
-const botao =
-    document.querySelector(
-        "[data-atualizar=\"" +
-        codigo +
-        "\"]"
-    );
-
-
-if (
-    botao
-) {
-
-    botao.disabled =
-        true;
-
-    botao.classList.add(
-        "carregando"
-    );
-
-    botao.textContent =
-        "ATUALIZANDO...";
-
-}
-
-
-try {
-
-    if (
-        !CONFIG.API_URL
-    ) {
-
-        await aguardar(
-            400
-        );
-
-
-        posto.dataHora =
-            agoraTexto();
-
-
-        posto.atividade =
-            gerarAtividade(
-                posto.status
-            );
-
-
-        renderizarPainel();
-
-        return;
-
-    }
-
-
-    const resposta =
-        await fetch(
-            CONFIG.API_URL +
-            "?acao=posto&posto=" +
-            encodeURIComponent(
-                codigo
-            ) +
-            "&t=" +
-            Date.now(),
-            {
-
-                method:
-                    "GET",
-
-                cache:
-                    "no-store"
-
-            }
-        );
-
-
-    if (
-        !resposta.ok
-    ) {
-
-        throw new Error(
-            "Erro HTTP " +
-            resposta.status
-        );
-
-    }
-
-
-    const dados =
-        await resposta.json();
-
-
-    atualizarEstadoPosto(
-        dados
-    );
-
-
-    salvarHistorico(
-        codigo,
-        dados
-    );
-
-
-    renderizarPainel();
-
-    atualizarConexao(
-        "online"
-    );
-
-}
-
-catch (
-    erro
-) {
-
-    console.error(
-        "Erro ao atualizar posto:",
-        erro
-    );
-
-
-    posto.atividade =
-        "Não foi possível atualizar";
-
-
-    posto.evento =
-        "Erro de comunicação";
-
-
-    posto.status =
-        "erro";
-
-
-    renderizarPainel();
-
-    atualizarConexao(
-        "erro"
-    );
-
-}
-
-finally {
-
-    if (
-        botao
-    ) {
-
-        botao.disabled =
-            false;
-
-        botao.classList.remove(
-            "carregando"
-        );
-
-        botao.textContent =
-            "ATUALIZAR";
-
-    }
-
-}
-```
-
-}
-
-/* =========================================================
-PROCESSAR RESPOSTA
-========================================================= */
-
-function processarResposta(
-dados
-) {
-
-```
-let lista =
-    [];
-
-
-if (
-    Array.isArray(
-        dados
-    )
-) {
-
-    lista =
-        dados;
-
-}
-
-else if (
-    dados &&
-    Array.isArray(
-        dados.postos
-    )
-) {
-
-    lista =
-        dados.postos;
-
-}
-
-else if (
-    dados &&
-    dados.dados &&
-    Array.isArray(
-        dados.dados
-    )
-) {
-
-    lista =
-        dados.dados;
-
-}
-
-
-lista.forEach(
-    function (item) {
-
-        atualizarEstadoPosto(
-            item
-        );
-
-
-        const codigo =
-            item.codigo ||
-            identificarCodigo(
-                item.posto ||
-                item.nome
-            );
-
-
-        if (
-            codigo
-        ) {
-
-            salvarHistorico(
+            codigo:
                 codigo,
-                item
-            );
 
-        }
+            nome:
+                posto.nome,
+
+            status:
+                "verificando",
+
+            evento:
+                "",
+
+            dataHora:
+                "",
+
+            timestamp:
+                0
+
+        };
 
     }
-);
-```
+
+
+    const status =
+        normalizarStatus(
+            resultado.status
+        );
+
+
+    const evento =
+        resultado.evento ||
+        resultado.mensagem ||
+        "Status atualizado";
+
+
+    const timestamp =
+        Number(
+            resultado.timestamp
+        ) ||
+        Date.now();
+
+
+    const dataHora =
+        resultado.dataHora ||
+        formatarDataHora(
+            timestamp
+        );
+
+
+    const statusAnterior =
+        normalizarStatus(
+            dadosPostos[codigo].status
+        );
+
+
+    dadosPostos[codigo] = {
+
+        ...dadosPostos[codigo],
+
+        status:
+            status,
+
+        evento:
+            evento,
+
+        dataHora:
+            dataHora,
+
+        timestamp:
+            timestamp
+
+    };
+
+
+    if (
+        registrar &&
+        statusAnterior !==
+        status
+    ) {
+
+        registrarHistorico(
+
+            codigo,
+
+            evento,
+
+            status,
+
+            dataHora,
+
+            timestamp
+
+        );
+
+    }
+
+
+    salvarStorage();
 
 }
+
+
 
 /* =========================================================
-ATUALIZAR ESTADO DO POSTO
+   REGISTRAR HISTÓRICO
 ========================================================= */
 
-function atualizarEstadoPosto(
-item
+function registrarHistorico(
+    codigo,
+    evento,
+    status,
+    dataHora,
+    timestamp
 ) {
 
-```
-if (
-    !item
-) {
+    if (
+        !historicos[codigo]
+    ) {
 
-    return;
+        historicos[codigo] =
+            [];
 
-}
+    }
 
 
-const codigo =
-    item.codigo ||
-    identificarCodigo(
-        item.posto ||
-        item.nome
+    const posto =
+        POSTOS.find(
+            item =>
+                item.codigo ===
+                codigo
+        );
+
+
+    const registro = {
+
+        codigo:
+            codigo,
+
+        posto:
+            posto
+                ? posto.nome
+                : codigo,
+
+        evento:
+            evento,
+
+        status:
+            status,
+
+        dataHora:
+            dataHora,
+
+        timestamp:
+            timestamp
+
+    };
+
+
+    historicos[codigo].unshift(
+        registro
     );
 
 
-if (
-    !codigo ||
-    !dadosPostos[codigo]
-) {
-
-    return;
-
-}
-
-
-const posto =
-    dadosPostos[
-        codigo
-    ];
-
-
-posto.status =
-    normalizarStatus(
-        item.status
-    );
-
-
-posto.atividade =
-    item.atividade ||
-    gerarAtividade(
-        posto.status
-    );
-
-
-posto.evento =
-    item.evento ||
-    "Sem evento informado";
-
-
-posto.dataHora =
-    item.dataHora ||
-    agoraTexto();
-
-
-posto.timestamp =
-    Number(
-        item.timestamp ||
-        Date.now()
-    );
-
-
-if (
-    Array.isArray(
-        item.historico
-    )
-) {
-
-    posto.historico =
-        item.historico.slice(
+    historicos[codigo] =
+        historicos[codigo]
+        .slice(
             0,
             CONFIG.LIMITE_HISTORICO
         );
 
-    salvarHistoricoLista(
-        codigo,
-        posto.historico
-    );
+
+    salvarStorage();
 
 }
-```
 
-}
+
 
 /* =========================================================
-NORMALIZAR STATUS
+   RENDERIZAR TUDO
 ========================================================= */
 
-function normalizarStatus(
-status
-) {
+function renderizarTudo() {
 
-```
-const valor =
-    String(
-        status ||
-        ""
-    )
-    .trim()
-    .toLowerCase();
+    renderizarPostos();
 
+    atualizarResumo();
 
-if (
-    valor === "online" ||
-    valor === "ativo" ||
-    valor === "active"
-) {
-
-    return "online";
+    atualizarIndicadorAtualizacao();
 
 }
 
 
-if (
-    valor === "offline" ||
-    valor === "pausado" ||
-    valor === "paused" ||
-    valor === "inativo"
-) {
-
-    return "offline";
-
-}
-
-
-if (
-    valor === "verificando" ||
-    valor === "checking"
-) {
-
-    return "verificando";
-
-}
-
-
-if (
-    valor === "erro"
-) {
-
-    return "erro";
-
-}
-
-
-return "aguardando";
-```
-
-}
 
 /* =========================================================
-ATIVIDADE
-========================================================= */
-
-function gerarAtividade(
-status
-) {
-
-```
-switch (
-    status
-) {
-
-    case "online":
-
-        return "Rádio ativa e transmitindo";
-
-
-    case "offline":
-
-        return "Rádio pausada ou offline";
-
-
-    case "verificando":
-
-        return "Verificando transmissão";
-
-
-    case "erro":
-
-        return "Erro na comunicação";
-
-
-    default:
-
-        return "Aguardando atualização";
-
-}
-```
-
-}
-
-/* =========================================================
-IDENTIFICAR CÓDIGO
-========================================================= */
-
-function identificarCodigo(
-nome
-) {
-
-```
-const texto =
-    String(
-        nome ||
-        ""
-    )
-    .toLowerCase();
-
-
-if (
-    texto.indexOf(
-        "graciosa v"
-    ) !== -1
-) {
-
-    return "graciosa-v";
-
-}
-
-
-if (
-    texto.indexOf(
-        "fátima"
-    ) !== -1 ||
-    texto.indexOf(
-        "fatima"
-    ) !== -1
-) {
-
-    return "fatima";
-
-}
-
-
-if (
-    texto.indexOf(
-        "jariva"
-    ) !== -1
-) {
-
-    return "jariva";
-
-}
-
-
-if (
-    texto.indexOf(
-        "bemer"
-    ) !== -1
-) {
-
-    return "bemer";
-
-}
-
-
-if (
-    texto.indexOf(
-        "piraí"
-    ) !== -1 ||
-    texto.indexOf(
-        "pirai"
-    ) !== -1
-) {
-
-    return "pirai";
-
-}
-
-
-if (
-    texto.indexOf(
-        "graciosa"
-    ) !== -1
-) {
-
-    return "graciosa";
-
-}
-
-
-return null;
-```
-
-}
-
-/* =========================================================
-RENDERIZAR PAINEL
-========================================================= */
-
-function renderizarPainel() {
-
-```
-const container =
-    document.getElementById(
-        "postosContainer"
-    );
-
-
-if (
-    !container
-) {
-
-    return;
-
-}
-
-
-let html =
-    "";
-
-
-POSTOS.forEach(
-    function (posto) {
-
-        html +=
-            criarCardPosto(
-                dadosPostos[
-                    posto.codigo
-                ]
-            );
-
-    }
-);
-
-
-container.innerHTML =
-    html;
-
-
-atualizarResumo();
-```
-
-}
-
-/* =========================================================
-CRIAR CARD DO POSTO
-========================================================= */
-
-function criarCardPosto(
-posto
-) {
-
-```
-const status =
-    obterTextoStatus(
-        posto.status
-    );
-
-
-const classeStatus =
-    obterClasseStatus(
-        posto.status
-    );
-
-
-const iconeStatus =
-    obterIconeStatus(
-        posto.status
-    );
-
-
-const historico =
-    Array.isArray(
-        posto.historico
-    )
-        ? posto.historico
-        : [];
-
-
-let html =
-    "";
-
-
-html +=
-    "<article class=\"posto-card " +
-    classeStatus +
-    "\" data-posto=\"" +
-    escaparHTML(
-        posto.codigo
-    ) +
-    "\">";
-
-
-html +=
-    "<div class=\"posto-card-header\">";
-
-
-html +=
-    "<div class=\"posto-identificacao\">";
-
-
-html +=
-    "<div class=\"posto-icone\">⛽</div>";
-
-
-html +=
-    "<div>";
-
-
-html +=
-    "<div class=\"posto-nome\">" +
-    escaparHTML(
-        posto.nome
-    ) +
-    "</div>";
-
-
-html +=
-    "<div class=\"posto-codigo\">" +
-    escaparHTML(
-        posto.codigo
-    ) +
-    "</div>";
-
-
-html +=
-    "</div>";
-
-
-html +=
-    "</div>";
-
-
-html +=
-    "<div class=\"posto-status " +
-    classeStatus +
-    "\">";
-
-
-html +=
-    "<span class=\"status-ponto\"></span>";
-
-
-html +=
-    iconeStatus +
-    " " +
-    status;
-
-
-html +=
-    "</div>";
-
-
-html +=
-    "</div>";
-
-
-html +=
-    "<div class=\"posto-atividade\">";
-
-
-html +=
-    "<div class=\"atividade-label\">" +
-    "ATIVIDADE" +
-    "</div>";
-
-
-html +=
-    "<div class=\"atividade-texto\">" +
-    escaparHTML(
-        posto.atividade
-    ) +
-    "</div>";
-
-
-html +=
-    "</div>";
-
-
-html +=
-    "<div class=\"posto-evento\">";
-
-
-html +=
-    "<div class=\"evento-label\">" +
-    "ÚLTIMO EVENTO" +
-    "</div>";
-
-
-html +=
-    "<div class=\"evento-texto\">" +
-    escaparHTML(
-        posto.evento
-    ) +
-    "</div>";
-
-
-html +=
-    "</div>";
-
-
-html +=
-    "<div class=\"posto-atualizacao\">";
-
-
-html +=
-    "<div>";
-
-
-html +=
-    "<div class=\"atualizacao-label\">" +
-    "ÚLTIMA ATUALIZAÇÃO" +
-    "</div>";
-
-
-html +=
-    "<div class=\"atualizacao-data\">" +
-    escaparHTML(
-        posto.dataHora
-    ) +
-    "</div>";
-
-
-html +=
-    "</div>";
-
-
-html +=
-    "<button " +
-    "type=\"button\" " +
-    "class=\"btn-atualizar-posto\" " +
-    "data-atualizar=\"" +
-    escaparHTML(
-        posto.codigo
-    ) +
-    "\">" +
-    "↻ ATUALIZAR" +
-    "</button>";
-
-
-html +=
-    "</div>";
-
-
-html +=
-    "<div class=\"posto-historico\">";
-
-
-html +=
-    "<div class=\"historico-header\">";
-
-
-html +=
-    "<div>";
-
-
-html +=
-    "<div class=\"historico-titulo\">" +
-    "HISTÓRICO" +
-    "</div>";
-
-
-html +=
-    "<div class=\"historico-subtitulo\">" +
-    historico.length +
-    " evento(s) registrado(s)" +
-    "</div>";
-
-
-html +=
-    "</div>";
-
-
-html +=
-    "</div>";
-
-
-html +=
-    "<div class=\"historico-lista\">";
-
-
-html +=
-    criarHistoricoHTML(
-        historico
-    );
-
-
-html +=
-    "</div>";
-
-
-html +=
-    "</div>";
-
-
-html +=
-    "</article>";
-
-
-return html;
-```
-
-}
-
-/* =========================================================
-HISTÓRICO
-========================================================= */
-
-function criarHistoricoHTML(
-historico
-) {
-
-```
-if (
-    !historico ||
-    !historico.length
-) {
-
-    return (
-        "<div class=\"historico-vazio\">" +
-        "Nenhum evento registrado." +
-        "</div>"
-    );
-
-}
-
-
-let html =
-    "";
-
-
-historico
-    .slice(
-        0,
-        CONFIG.LIMITE_HISTORICO
-    )
-    .forEach(
-        function (item) {
-
-            const status =
-                normalizarStatus(
-                    item.status
-                );
-
-
-            const icone =
-                obterIconeStatus(
-                    status
-                );
-
-
-            html +=
-                "<div class=\"historico-item\">";
-
-
-            html +=
-                "<div class=\"historico-status\">" +
-                icone +
-                "</div>";
-
-
-            html +=
-                "<div class=\"historico-evento\">";
-
-
-            html +=
-                "<div class=\"historico-evento-nome\">" +
-                escaparHTML(
-                    item.evento ||
-                    item.atividade ||
-                    "Evento"
-                ) +
-                "</div>";
-
-
-            html +=
-                "<div class=\"historico-evento-status\">" +
-                obterTextoStatus(
-                    status
-                ) +
-                "</div>";
-
-
-            html +=
-                "</div>";
-
-
-            html +=
-                "<div class=\"historico-horario\">" +
-                escaparHTML(
-                    item.dataHora ||
-                    "--/--/---- às --:--:--"
-                ) +
-                "</div>";
-
-
-            html +=
-                "</div>";
-
-        }
-    );
-
-
-return html;
-```
-
-}
-
-/* =========================================================
-RESUMO
+   RESUMO
 ========================================================= */
 
 function atualizarResumo() {
 
-```
-let online =
-    0;
+    let online =
+        0;
 
-let offline =
-    0;
+    let pausados =
+        0;
 
-let verificando =
-    0;
+    let offline =
+        0;
 
-let aguardando =
-    0;
-
-
-POSTOS.forEach(
-    function (posto) {
-
-        const status =
-            dadosPostos[
-                posto.codigo
-            ].status;
+    let verificando =
+        0;
 
 
-        if (
-            status ===
-            "online"
-        ) {
+    POSTOS.forEach(
 
-            online++;
+        posto => {
+
+            const status =
+                normalizarStatus(
+
+                    dadosPostos[
+                        posto.codigo
+                    ].status
+
+                );
+
+
+            if (
+                status ===
+                "online"
+            ) {
+
+                online++;
+
+            }
+
+            else if (
+                status ===
+                "pausado"
+            ) {
+
+                pausados++;
+
+            }
+
+            else if (
+                status ===
+                "offline"
+            ) {
+
+                offline++;
+
+            }
+
+            else {
+
+                verificando++;
+
+            }
 
         }
 
-        else if (
-            status ===
-            "offline"
-        ) {
-
-            offline++;
-
-        }
-
-        else if (
-            status ===
-            "verificando"
-        ) {
-
-            verificando++;
-
-        }
-
-        else {
-
-            aguardando++;
-
-        }
-
-    }
-);
-
-
-definirTexto(
-    "totalPostos",
-    POSTOS.length
-);
-
-
-definirTexto(
-    "postosOnline",
-    online
-);
-
-
-definirTexto(
-    "postosOffline",
-    offline
-);
-
-
-definirTexto(
-    "postosVerificando",
-    verificando
-);
-
-
-definirTexto(
-    "postosAguardando",
-    aguardando
-);
-
-
-definirTexto(
-    "ultimaAtualizacao",
-    ultimoAtualizacao
-        ? formatarHora(
-            ultimoAtualizacao
-        )
-        : "--:--:--"
-);
-```
-
-}
-
-/* =========================================================
-TEXTO DO STATUS
-========================================================= */
-
-function obterTextoStatus(
-status
-) {
-
-```
-switch (
-    status
-) {
-
-    case "online":
-
-        return "ATIVO";
-
-
-    case "offline":
-
-        return "PAUSADO";
-
-
-    case "verificando":
-
-        return "VERIFICANDO";
-
-
-    case "erro":
-
-        return "ERRO";
-
-
-    default:
-
-        return "AGUARDANDO";
-
-}
-```
-
-}
-
-/* =========================================================
-CLASSE DO STATUS
-========================================================= */
-
-function obterClasseStatus(
-status
-) {
-
-```
-switch (
-    status
-) {
-
-    case "online":
-
-        return "status-online";
-
-
-    case "offline":
-
-        return "status-offline";
-
-
-    case "verificando":
-
-        return "status-verificando";
-
-
-    case "erro":
-
-        return "status-erro";
-
-
-    default:
-
-        return "status-aguardando";
-
-}
-```
-
-}
-
-/* =========================================================
-ÍCONE DO STATUS
-========================================================= */
-
-function obterIconeStatus(
-status
-) {
-
-```
-switch (
-    status
-) {
-
-    case "online":
-
-        return "🟢";
-
-
-    case "offline":
-
-        return "🔴";
-
-
-    case "verificando":
-
-        return "🟡";
-
-
-    case "erro":
-
-        return "⚠️";
-
-
-    default:
-
-        return "⚪";
-
-}
-```
-
-}
-
-/* =========================================================
-INDICADOR DE ATUALIZAÇÃO
-========================================================= */
-
-function definirIndicadorAtualizacao(
-ativo
-) {
-
-```
-const botao =
-    document.getElementById(
-        "btnAtualizar"
     );
 
 
-if (
-    !botao
-) {
-
-    return;
-
-}
-
-
-if (
-    ativo
-) {
-
-    botao.disabled =
-        true;
-
-    botao.classList.add(
-        "atualizando"
-    );
-
-    botao.textContent =
-        "↻ ATUALIZANDO...";
-
-}
-
-else {
-
-    botao.disabled =
-        false;
-
-    botao.classList.remove(
-        "atualizando"
-    );
-
-    botao.textContent =
-        "↻ ATUALIZAR";
-
-}
-```
-
-}
-
-/* =========================================================
-CONEXÃO
-========================================================= */
-
-function atualizarConexao(
-estado
-) {
-
-```
-const indicador =
-    document.getElementById(
-        "statusConexao"
+    atualizarElemento(
+        "totalPostos",
+        POSTOS.length
     );
 
 
-if (
-    !indicador
-) {
-
-    return;
-
-}
-
-
-indicador.className =
-    "conexao-indicador";
-
-
-if (
-    estado ===
-    "online"
-) {
-
-    indicador.classList.add(
-        "conexao-online"
+    atualizarElemento(
+        "totalOnline",
+        online
     );
 
-    indicador.textContent =
-        "● SISTEMA CONECTADO";
 
-    return;
-
-}
-
-
-if (
-    estado ===
-    "local"
-) {
-
-    indicador.classList.add(
-        "conexao-local"
+    atualizarElemento(
+        "totalPausados",
+        pausados
     );
 
-    indicador.textContent =
-        "● MODO LOCAL";
 
-    return;
+    atualizarElemento(
+        "totalOffline",
+        offline
+    );
 
-}
 
-
-indicador.classList.add(
-    "conexao-erro"
-);
-
-indicador.textContent =
-    "● FALHA NA CONEXÃO";
-```
+    atualizarElemento(
+        "totalVerificando",
+        verificando
+    );
 
 }
+
+
 
 /* =========================================================
-RELÓGIO
+   ATUALIZAR ELEMENTO
 ========================================================= */
 
-function atualizarRelogio() {
-
-```
-const agora =
-    new Date();
-
-
-definirTexto(
-    "clock",
-    agora.toLocaleTimeString(
-        "pt-BR"
-    )
-);
-
-
-definirTexto(
-    "date",
-    agora.toLocaleDateString(
-        "pt-BR",
-        {
-
-            weekday:
-                "long",
-
-            day:
-                "2-digit",
-
-            month:
-                "long",
-
-            year:
-                "numeric"
-
-        }
-    )
-);
-```
-
-}
-
-/* =========================================================
-FORMATAR HORA
-========================================================= */
-
-function formatarHora(
-data
+function atualizarElemento(
+    id,
+    valor
 ) {
 
-```
-return new Date(
-    data
-).toLocaleTimeString(
-    "pt-BR"
-);
-```
-
-}
-
-/* =========================================================
-AGORA
-========================================================= */
-
-function agoraTexto() {
-
-```
-const agora =
-    new Date();
-
-
-return (
-    agora.toLocaleDateString(
-        "pt-BR"
-    ) +
-    " às " +
-    agora.toLocaleTimeString(
-        "pt-BR"
-    )
-);
-```
-
-}
-
-/* =========================================================
-STORAGE
-========================================================= */
-
-function obterChaveStorage(
-codigo
-) {
-
-```
-return (
-    CONFIG.STORAGE_PREFIX +
-    "_" +
-    codigo
-);
-```
-
-}
-
-/* =========================================================
-CARREGAR HISTÓRICO
-========================================================= */
-
-function carregarHistorico(
-codigo
-) {
-
-```
-try {
-
-    const salvo =
-        localStorage.getItem(
-            obterChaveStorage(
-                codigo
-            )
+    const el =
+        elemento(
+            id
         );
 
 
     if (
-        !salvo
+        el
     ) {
 
-        return [];
+        el.textContent =
+            valor;
+
+    }
+
+}
+
+
+
+/* =========================================================
+   INDICADOR DE ATUALIZAÇÃO
+========================================================= */
+
+function atualizarIndicadorAtualizacao() {
+
+    const el =
+        elemento(
+            "ultimaAtualizacao"
+        );
+
+
+    if (
+        !el
+    ) {
+
+        return;
+
+    }
+
+
+    if (
+        !ultimaAtualizacao
+    ) {
+
+        el.textContent =
+            "Ainda não atualizado";
+
+        return;
+
+    }
+
+
+    el.textContent =
+        "Atualizado em " +
+        formatarDataHora(
+            ultimaAtualizacao
+        );
+
+}
+
+
+
+/* =========================================================
+   MENSAGEM DE STATUS
+========================================================= */
+
+function mostrarStatusMensagem(
+    mensagem
+) {
+
+    const el =
+        elemento(
+            "statusMensagem"
+        );
+
+
+    if (
+        !el
+    ) {
+
+        return;
+
+    }
+
+
+    el.textContent =
+        mensagem;
+
+
+    el.classList.add(
+        "visible"
+    );
+
+
+    clearTimeout(
+        mostrarStatusMensagem.timer
+    );
+
+
+    mostrarStatusMensagem.timer =
+        setTimeout(
+
+            function () {
+
+                el.classList.remove(
+                    "visible"
+                );
+
+            },
+
+            5000
+
+        );
+
+}
+
+
+
+/* =========================================================
+   HISTÓRICO
+========================================================= */
+
+function abrirHistorico(
+    codigo
+) {
+
+    const posto =
+        POSTOS.find(
+            item =>
+                item.codigo ===
+                codigo
+        );
+
+
+    if (
+        !posto
+    ) {
+
+        return;
 
     }
 
 
     const lista =
-        JSON.parse(
-            salvo
+        historicos[codigo] ||
+        [];
+
+
+    const modal =
+        elemento(
+            "historyModal"
+        );
+
+
+    const titulo =
+        elemento(
+            "historyModalTitle"
+        );
+
+
+    const conteudo =
+        elemento(
+            "historyModalContent"
         );
 
 
     if (
-        !Array.isArray(
-            lista
-        )
+        !modal ||
+        !conteudo
     ) {
 
-        return [];
+        /*
+           Caso o HTML ainda não tenha
+           modal, abre uma versão simples
+           utilizando alert.
+        */
+
+        abrirHistoricoSimples(
+            posto,
+            lista
+        );
+
+        return;
 
     }
 
 
-    return lista.slice(
-        0,
-        CONFIG.LIMITE_HISTORICO
-    );
+    if (
+        titulo
+    ) {
 
-}
+        titulo.textContent =
+            "Histórico — " +
+            posto.nome;
 
-catch (
-    erro
-) {
-
-    console.warn(
-        "Erro ao carregar histórico:",
-        erro
-    );
-
-
-    return [];
-
-}
-```
-
-}
-
-/* =========================================================
-SALVAR HISTÓRICO
-========================================================= */
-
-function salvarHistorico(
-codigo,
-dados
-) {
-
-```
-if (
-    !codigo ||
-    !dados ||
-    !dadosPostos[codigo]
-) {
-
-    return;
-
-}
-
-
-const historico =
-    dadosPostos[
-        codigo
-    ].historico || [];
-
-
-const novoEvento = {
-
-    evento:
-        dados.evento ||
-        dados.atividade ||
-        "Atualização",
-
-    status:
-        dados.status ||
-        "aguardando",
-
-    dataHora:
-        dados.dataHora ||
-        agoraTexto(),
-
-    timestamp:
-        Number(
-            dados.timestamp ||
-            Date.now()
-        )
-
-};
-
-
-if (
-    historico.length
-) {
-
-    const ultimo =
-        historico[0];
+    }
 
 
     if (
-        ultimo.evento ===
-        novoEvento.evento &&
-        ultimo.status ===
-        novoEvento.status
+        !lista.length
+    ) {
+
+        conteudo.innerHTML = `
+
+            <div class="history-empty">
+
+                📋
+
+                <strong>
+                    Nenhum evento registrado.
+                </strong>
+
+                <span>
+                    O histórico aparecerá aqui quando
+                    houver alterações de status.
+                </span>
+
+            </div>
+
+        `;
+
+    }
+
+    else {
+
+        conteudo.innerHTML =
+
+            lista
+            .map(
+
+                item => `
+
+                    <div class="history-row">
+
+
+                        <div class="history-status">
+
+                            ${iconeStatus(
+                                item.status
+                            )}
+
+                        </div>
+
+
+                        <div class="history-info">
+
+
+                            <div class="history-event">
+                                ${escapeHTML(
+                                    item.evento
+                                )}
+                            </div>
+
+
+                            <div class="history-date">
+                                ${escapeHTML(
+                                    item.dataHora
+                                )}
+                            </div>
+
+
+                        </div>
+
+
+                        <div class="history-badge ${classeStatus(
+                            item.status
+                        )}">
+
+                            ${textoStatus(
+                                item.status
+                            )}
+
+                        </div>
+
+
+                    </div>
+
+                `
+
+            )
+            .join("");
+
+    }
+
+
+    modal.classList.add(
+        "open"
+    );
+
+
+    modal.setAttribute(
+        "aria-hidden",
+        "false"
+    );
+
+}
+
+
+
+/* =========================================================
+   HISTÓRICO SIMPLES
+========================================================= */
+
+function abrirHistoricoSimples(
+    posto,
+    lista
+) {
+
+    if (
+        !lista.length
+    ) {
+
+        alert(
+
+            posto.nome +
+            "\n\n" +
+            "Nenhum evento registrado."
+
+        );
+
+        return;
+
+    }
+
+
+    const texto =
+        lista
+        .slice(
+            0,
+            20
+        )
+        .map(
+
+            item =>
+
+                iconeStatus(
+                    item.status
+                )
+
+                +
+
+                " " +
+
+                textoStatus(
+                    item.status
+                )
+
+                +
+
+                " — " +
+
+                item.evento
+
+                +
+
+                "\n" +
+
+                item.dataHora
+
+        )
+        .join(
+            "\n\n"
+        );
+
+
+    alert(
+
+        "HISTÓRICO — " +
+        posto.nome +
+
+        "\n\n" +
+
+        texto
+
+    );
+
+}
+
+
+
+/* =========================================================
+   FECHAR HISTÓRICO
+========================================================= */
+
+function fecharHistorico() {
+
+    const modal =
+        elemento(
+            "historyModal"
+        );
+
+
+    if (
+        !modal
     ) {
 
         return;
 
     }
 
-}
 
-
-historico.unshift(
-    novoEvento
-);
-
-
-dadosPostos[
-    codigo
-].historico =
-    historico.slice(
-        0,
-        CONFIG.LIMITE_HISTORICO
+    modal.classList.remove(
+        "open"
     );
 
 
-salvarHistoricoLista(
-    codigo,
-    dadosPostos[
-        codigo
-    ].historico
-);
-```
-
-}
-
-/* =========================================================
-SALVAR LISTA
-========================================================= */
-
-function salvarHistoricoLista(
-codigo,
-lista
-) {
-
-```
-try {
-
-    localStorage.setItem(
-
-        obterChaveStorage(
-            codigo
-        ),
-
-        JSON.stringify(
-            lista.slice(
-                0,
-                CONFIG.LIMITE_HISTORICO
-            )
-        )
-
+    modal.setAttribute(
+        "aria-hidden",
+        "true"
     );
 
 }
 
-catch (
-    erro
-) {
 
-    console.warn(
-        "Erro ao salvar histórico:",
-        erro
-    );
-
-}
-```
-
-}
 
 /* =========================================================
-CARREGAR DADOS LOCAIS
+   CONFIGURAR MODAL
 ========================================================= */
 
-function carregarDadosLocais() {
+function configurarModal() {
 
-```
-POSTOS.forEach(
-    function (posto) {
-
-        const historico =
-            carregarHistorico(
-                posto.codigo
-            );
+    const fechar =
+        elemento(
+            "closeHistoryModal"
+        );
 
 
-        dadosPostos[
-            posto.codigo
-        ].historico =
-            historico;
+    if (
+        fechar
+    ) {
 
-
-        if (
-            historico.length
-        ) {
-
-            const ultimo =
-                historico[0];
-
-
-            dadosPostos[
-                posto.codigo
-            ].status =
-                normalizarStatus(
-                    ultimo.status
-                );
-
-
-            dadosPostos[
-                posto.codigo
-            ].evento =
-                ultimo.evento ||
-                "Evento registrado";
-
-
-            dadosPostos[
-                posto.codigo
-            ].dataHora =
-                ultimo.dataHora ||
-                "--/--/---- às --:--:--";
-
-
-            dadosPostos[
-                posto.codigo
-            ].atividade =
-                gerarAtividade(
-                    dadosPostos[
-                        posto.codigo
-                    ].status
-                );
-
-        }
-
-    }
-);
-```
-
-}
-
-/* =========================================================
-DEFINIR TEXTO
-========================================================= */
-
-function definirTexto(
-id,
-texto
-) {
-
-```
-const elemento =
-    document.getElementById(
-        id
-    );
-
-
-if (
-    elemento
-) {
-
-    elemento.textContent =
-        texto;
-
-}
-```
-
-}
-
-/* =========================================================
-ESCAPAR HTML
-========================================================= */
-
-function escaparHTML(
-texto
-) {
-
-```
-return String(
-    texto === null ||
-    texto === undefined
-        ? ""
-        : texto
-)
-
-.replace(
-    /&/g,
-    "&amp;"
-)
-
-.replace(
-    /</g,
-    "&lt;"
-)
-
-.replace(
-    />/g,
-    "&gt;"
-)
-
-.replace(
-    /"/g,
-    "&quot;"
-)
-
-.replace(
-    /'/g,
-    "&#039;"
-);
-```
-
-}
-
-/* =========================================================
-AGUARDAR
-========================================================= */
-
-function aguardar(
-tempo
-) {
-
-```
-return new Promise(
-    function (resolve) {
-
-        setTimeout(
-            resolve,
-            tempo
+        fechar.addEventListener(
+            "click",
+            fecharHistorico
         );
 
     }
-);
-```
+
+
+    const modal =
+        elemento(
+            "historyModal"
+        );
+
+
+    if (
+        modal
+    ) {
+
+        modal.addEventListener(
+
+            "click",
+
+            function (
+                evento
+            ) {
+
+                if (
+                    evento.target ===
+                    modal
+                ) {
+
+                    fecharHistorico();
+
+                }
+
+            }
+
+        );
+
+    }
+
+
+    document.addEventListener(
+
+        "keydown",
+
+        function (
+            evento
+        ) {
+
+            if (
+                evento.key ===
+                "Escape"
+            ) {
+
+                fecharHistorico();
+
+            }
+
+        }
+
+    );
 
 }
 
+
+
 /* =========================================================
-LOG
+   BOTÃO ATUALIZAR
+========================================================= */
+
+function configurarBotaoAtualizar() {
+
+    const botao =
+        elemento(
+            "btnAtualizar"
+        );
+
+
+    if (
+        !botao
+    ) {
+
+        return;
+
+    }
+
+
+    botao.addEventListener(
+
+        "click",
+
+        function () {
+
+            atualizarTodos();
+
+        }
+
+    );
+
+}
+
+
+
+/* =========================================================
+   AUTO ATUALIZAÇÃO
+========================================================= */
+
+function iniciarAtualizacaoAutomatica() {
+
+    setInterval(
+
+        function () {
+
+            atualizarTodos();
+
+        },
+
+        CONFIG.INTERVALO_ATUALIZACAO
+
+    );
+
+}
+
+
+
+/* =========================================================
+   ESCAPAR HTML
+========================================================= */
+
+function escapeHTML(
+    texto
+) {
+
+    return String(
+        texto || ""
+    )
+
+    .replace(
+        /&/g,
+        "&amp;"
+    )
+
+    .replace(
+        /</g,
+        "&lt;"
+    )
+
+    .replace(
+        />/g,
+        "&gt;"
+    )
+
+    .replace(
+        /"/g,
+        "&quot;"
+    )
+
+    .replace(
+        /'/g,
+        "&#039;"
+    );
+
+}
+
+
+
+/* =========================================================
+   INICIALIZAÇÃO
+========================================================= */
+
+function iniciarPainel() {
+
+    console.log(
+        "======================================"
+    );
+
+    console.log(
+        "PAINEL DE MONITORAMENTO DE RÁDIO"
+    );
+
+    console.log(
+        "Postos Graciosa"
+    );
+
+    console.log(
+        "======================================"
+    );
+
+
+    criarEstadoInicial();
+
+
+    carregarStorage();
+
+
+    criarEstadoInicial();
+
+
+    renderizarTudo();
+
+
+    atualizarRelogio();
+
+
+    setInterval(
+
+        atualizarRelogio,
+
+        1000
+
+    );
+
+
+    configurarBotaoAtualizar();
+
+
+    configurarModal();
+
+
+    iniciarAtualizacaoAutomatica();
+
+
+    /*
+       Primeira consulta.
+    */
+
+    setTimeout(
+
+        function () {
+
+            atualizarTodos();
+
+        },
+
+        500
+
+    );
+
+}
+
+
+
+/* =========================================================
+   DOM READY
+========================================================= */
+
+if (
+    document.readyState ===
+    "loading"
+) {
+
+    document.addEventListener(
+
+        "DOMContentLoaded",
+
+        iniciarPainel
+
+    );
+
+}
+
+else {
+
+    iniciarPainel();
+
+}
+
+
+
+/* =========================================================
+   LOG FINAL
 ========================================================= */
 
 console.log(
-"======================================"
-);
-
-console.log(
-"PAINEL DE MONITORAMENTO DE RÁDIO"
-);
-
-console.log(
-"POSTOS GRACIOSA"
-);
-
-console.log(
-"Quantidade de postos:",
-POSTOS.length
-);
-
-console.log(
-"Atualização automática:",
-CONFIG.INTERVALO_ATUALIZACAO,
-"ms"
-);
-
-console.log(
-"======================================"
+    "App.js carregado."
 );
