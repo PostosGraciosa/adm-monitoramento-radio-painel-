@@ -1,0 +1,2168 @@
+/* =========================================================
+   ADM MONITORAMENTO RÁDIO
+   PAINEL DOS 6 POSTOS
+   POSTOS GRACIOSA
+========================================================= */
+
+
+/* =========================================================
+   RESET
+========================================================= */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+
+html {
+    min-height: 100%;
+}
+
+
+body {
+    min-height: 100vh;
+
+    font-family:
+        Arial,
+        Helvetica,
+        sans-serif;
+
+    background:
+        linear-gradient(
+            135deg,
+            #eef5f0 0%,
+            #f8faf9 50%,
+            #edf4ef 100%
+        );
+
+    color: #1f2937;
+
+    padding: 24px;
+}
+
+
+/* =========================================================
+   VARIÁVEIS
+========================================================= */
+
+:root {
+
+    --verde:
+        #0e6835;
+
+    --verde-escuro:
+        #075228;
+
+    --verde-claro:
+        #eaf7ef;
+
+    --amarelo:
+        #e7b91d;
+
+    --vermelho:
+        #c62828;
+
+    --vermelho-claro:
+        #ffeded;
+
+    --laranja:
+        #d97706;
+
+    --laranja-claro:
+        #fff4df;
+
+    --azul:
+        #2563eb;
+
+    --azul-claro:
+        #edf4ff;
+
+    --cinza:
+        #6b7280;
+
+    --cinza-claro:
+        #f5f7f6;
+
+    --borda:
+        #e1e9e4;
+
+    --borda-clara:
+        #edf0ee;
+
+    --texto:
+        #1f2937;
+
+    --texto-secundario:
+        #6b7280;
+
+    --branco:
+        #ffffff;
+
+    --sombra:
+        0 10px 35px rgba(0, 0, 0, .05);
+
+    --sombra-forte:
+        0 15px 40px rgba(14, 104, 53, .12);
+
+}
+
+
+/* =========================================================
+   CONTAINER PRINCIPAL
+========================================================= */
+
+.container {
+
+    width: 100%;
+
+    max-width: 1500px;
+
+    margin: 0 auto;
+
+}
+
+
+/* =========================================================
+   CABEÇALHO
+========================================================= */
+
+.header {
+
+    background:
+        linear-gradient(
+            135deg,
+            var(--verde),
+            var(--verde-escuro)
+        );
+
+    color: white;
+
+    border-radius: 22px;
+
+    padding: 25px 30px;
+
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: center;
+
+    gap: 25px;
+
+    box-shadow:
+        var(--sombra-forte);
+
+    margin-bottom: 20px;
+
+}
+
+
+/* =========================================================
+   MARCA
+========================================================= */
+
+.marca {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 15px;
+
+    min-width: 0;
+
+}
+
+
+.icone {
+
+    width: 58px;
+
+    height: 58px;
+
+    border-radius: 17px;
+
+    background:
+        rgba(255, 255, 255, .13);
+
+    border:
+        1px solid
+        rgba(255, 255, 255, .10);
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    font-size: 28px;
+
+    flex-shrink: 0;
+
+}
+
+
+.empresa {
+
+    font-size: 10px;
+
+    text-transform: uppercase;
+
+    letter-spacing: 1.7px;
+
+    opacity: .72;
+
+    font-weight: 700;
+
+    margin-bottom: 5px;
+
+}
+
+
+.titulo {
+
+    font-size: 25px;
+
+    font-weight: 800;
+
+    line-height: 1.15;
+
+}
+
+
+.subtitulo {
+
+    font-size: 11px;
+
+    opacity: .72;
+
+    margin-top: 6px;
+
+}
+
+
+/* =========================================================
+   RELÓGIO
+========================================================= */
+
+.clock {
+
+    text-align: right;
+
+    flex-shrink: 0;
+
+}
+
+
+.clock-label {
+
+    font-size: 9px;
+
+    text-transform: uppercase;
+
+    letter-spacing: 1px;
+
+    opacity: .65;
+
+}
+
+
+.clock-time {
+
+    font-size: 25px;
+
+    font-weight: 800;
+
+    margin-top: 4px;
+
+    font-variant-numeric:
+        tabular-nums;
+
+}
+
+
+.clock-date {
+
+    font-size: 10px;
+
+    opacity: .7;
+
+    margin-top: 4px;
+
+}
+
+
+/* =========================================================
+   BARRA DE CONTROLE
+========================================================= */
+
+.toolbar {
+
+    background: white;
+
+    border:
+        1px solid var(--borda);
+
+    border-radius: 18px;
+
+    padding: 15px 18px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    gap: 15px;
+
+    margin-bottom: 20px;
+
+    box-shadow:
+        0 6px 20px
+        rgba(0, 0, 0, .035);
+
+}
+
+
+.toolbar-info {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 10px;
+
+}
+
+
+.toolbar-title {
+
+    font-size: 13px;
+
+    font-weight: 800;
+
+}
+
+
+.toolbar-status {
+
+    font-size: 10px;
+
+    color:
+        var(--texto-secundario);
+
+}
+
+
+.toolbar-actions {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 10px;
+
+}
+
+
+/* =========================================================
+   INDICADOR DE ATUALIZAÇÃO
+========================================================= */
+
+.refresh-indicator {
+
+    display: inline-flex;
+
+    align-items: center;
+
+    gap: 7px;
+
+    font-size: 10px;
+
+    color:
+        var(--texto-secundario);
+
+}
+
+
+.refresh-dot {
+
+    width: 7px;
+
+    height: 7px;
+
+    border-radius: 50%;
+
+    background:
+        var(--verde);
+
+}
+
+
+.refresh-dot.loading {
+
+    animation:
+        pulsar 1s infinite;
+
+}
+
+
+@keyframes pulsar {
+
+    0% {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: .35;
+        transform: scale(.75);
+    }
+
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+}
+
+
+/* =========================================================
+   BOTÃO ATUALIZAR
+========================================================= */
+
+.btn-atualizar {
+
+    border: 0;
+
+    background:
+        var(--verde);
+
+    color: white;
+
+    border-radius: 11px;
+
+    padding:
+        10px 16px;
+
+    font-size: 10px;
+
+    font-weight: 800;
+
+    cursor: pointer;
+
+    display: inline-flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    gap: 7px;
+
+    transition:
+        transform .15s ease,
+        background .15s ease,
+        box-shadow .15s ease;
+
+    box-shadow:
+        0 5px 15px
+        rgba(14, 104, 53, .16);
+
+}
+
+
+.btn-atualizar:hover {
+
+    background:
+        var(--verde-escuro);
+
+    transform:
+        translateY(-1px);
+
+}
+
+
+.btn-atualizar:active {
+
+    transform:
+        translateY(0);
+
+}
+
+
+.btn-atualizar.loading {
+
+    pointer-events: none;
+
+    opacity: .7;
+
+}
+
+
+/* =========================================================
+   RESUMO GERAL
+========================================================= */
+
+.resumo {
+
+    display: grid;
+
+    grid-template-columns:
+        repeat(4, 1fr);
+
+    gap: 15px;
+
+    margin-bottom: 20px;
+
+}
+
+
+.resumo-card {
+
+    background: white;
+
+    border:
+        1px solid var(--borda);
+
+    border-radius: 18px;
+
+    padding: 18px 20px;
+
+    box-shadow:
+        0 7px 25px
+        rgba(0, 0, 0, .035);
+
+    position: relative;
+
+    overflow: hidden;
+
+}
+
+
+.resumo-card::before {
+
+    content: "";
+
+    position: absolute;
+
+    left: 0;
+
+    top: 0;
+
+    bottom: 0;
+
+    width: 4px;
+
+    background:
+        var(--verde);
+
+}
+
+
+.resumo-card.online::before {
+
+    background:
+        var(--verde);
+
+}
+
+
+.resumo-card.offline::before {
+
+    background:
+        var(--vermelho);
+
+}
+
+
+.resumo-card.pausado::before {
+
+    background:
+        var(--laranja);
+
+}
+
+
+.resumo-card.verificando::before {
+
+    background:
+        var(--amarelo);
+
+}
+
+
+.resumo-label {
+
+    font-size: 9px;
+
+    color:
+        var(--texto-secundario);
+
+    text-transform: uppercase;
+
+    letter-spacing: .8px;
+
+    font-weight: 700;
+
+}
+
+
+.resumo-valor {
+
+    font-size: 27px;
+
+    font-weight: 800;
+
+    margin-top: 5px;
+
+    font-variant-numeric:
+        tabular-nums;
+
+}
+
+
+.resumo-descricao {
+
+    font-size: 9px;
+
+    color:
+        #929b96;
+
+    margin-top: 3px;
+
+}
+
+
+/* =========================================================
+   GRID DOS POSTOS
+========================================================= */
+
+.postos-grid {
+
+    display: grid;
+
+    grid-template-columns:
+        repeat(3, 1fr);
+
+    gap: 18px;
+
+}
+
+
+/* =========================================================
+   CARD DO POSTO
+========================================================= */
+
+.posto-card {
+
+    background:
+        var(--branco);
+
+    border:
+        1px solid var(--borda);
+
+    border-radius: 21px;
+
+    overflow: hidden;
+
+    box-shadow:
+        var(--sombra);
+
+    transition:
+        transform .18s ease,
+        box-shadow .18s ease,
+        border-color .18s ease;
+
+}
+
+
+.posto-card:hover {
+
+    transform:
+        translateY(-2px);
+
+    box-shadow:
+        0 15px 40px
+        rgba(0, 0, 0, .07);
+
+}
+
+
+/* =========================================================
+   TOPO DO CARD
+========================================================= */
+
+.posto-header {
+
+    padding: 19px;
+
+    border-bottom:
+        1px solid var(--borda-clara);
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    gap: 12px;
+
+}
+
+
+.posto-identidade {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 11px;
+
+    min-width: 0;
+
+}
+
+
+.posto-icone {
+
+    width: 43px;
+
+    height: 43px;
+
+    border-radius: 13px;
+
+    background:
+        #eef7f1;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    font-size: 19px;
+
+    flex-shrink: 0;
+
+}
+
+
+.posto-nome {
+
+    font-size: 14px;
+
+    font-weight: 800;
+
+    white-space: nowrap;
+
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+
+}
+
+
+.posto-codigo {
+
+    font-size: 8px;
+
+    color:
+        #929b96;
+
+    margin-top: 4px;
+
+    text-transform: uppercase;
+
+    letter-spacing: .5px;
+
+}
+
+
+/* =========================================================
+   STATUS
+========================================================= */
+
+.status {
+
+    display: inline-flex;
+
+    align-items: center;
+
+    gap: 6px;
+
+    padding:
+        7px 9px;
+
+    border-radius: 30px;
+
+    font-size: 8px;
+
+    font-weight: 800;
+
+    text-transform: uppercase;
+
+    white-space: nowrap;
+
+    flex-shrink: 0;
+
+}
+
+
+.status-dot {
+
+    width: 6px;
+
+    height: 6px;
+
+    border-radius: 50%;
+
+    background:
+        currentColor;
+
+}
+
+
+/* ONLINE */
+
+.status-online {
+
+    background:
+        var(--verde-claro);
+
+    color:
+        var(--verde);
+
+}
+
+
+/* PAUSADO */
+
+.status-paused {
+
+    background:
+        var(--laranja-claro);
+
+    color:
+        var(--laranja);
+
+}
+
+
+/* OFFLINE */
+
+.status-offline {
+
+    background:
+        var(--vermelho-claro);
+
+    color:
+        var(--vermelho);
+
+}
+
+
+/* VERIFICANDO */
+
+.status-waiting {
+
+    background:
+        #fff8df;
+
+    color:
+        #9a7500;
+
+}
+
+
+/* =========================================================
+   ÁREA DE STATUS
+========================================================= */
+
+.status-area {
+
+    padding:
+        19px;
+
+    background:
+        linear-gradient(
+            135deg,
+            #fbfcfb,
+            #ffffff
+        );
+
+}
+
+
+.status-principal {
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    gap: 10px;
+
+}
+
+
+.status-descricao {
+
+    font-size: 10px;
+
+    color:
+        var(--texto-secundario);
+
+    line-height: 1.5;
+
+}
+
+
+.status-descricao strong {
+
+    color:
+        var(--texto);
+
+}
+
+
+/* =========================================================
+   INDICADOR VISUAL
+========================================================= */
+
+.monitor-indicator {
+
+    width: 48px;
+
+    height: 48px;
+
+    border-radius: 15px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    flex-shrink: 0;
+
+    font-size: 20px;
+
+}
+
+
+.monitor-online {
+
+    background:
+        var(--verde-claro);
+
+}
+
+
+.monitor-offline {
+
+    background:
+        var(--vermelho-claro);
+
+}
+
+
+.monitor-paused {
+
+    background:
+        var(--laranja-claro);
+
+}
+
+
+.monitor-waiting {
+
+    background:
+        #fff8df;
+
+}
+
+
+/* =========================================================
+   LINHAS DE INFORMAÇÃO
+========================================================= */
+
+.info-grid {
+
+    display: grid;
+
+    grid-template-columns:
+        1fr 1fr;
+
+    gap: 8px;
+
+    margin-top: 15px;
+
+}
+
+
+.info-box {
+
+    background:
+        #f7f9f8;
+
+    border:
+        1px solid #edf1ee;
+
+    border-radius: 11px;
+
+    padding:
+        9px 10px;
+
+}
+
+
+.info-label {
+
+    font-size: 7px;
+
+    color:
+        #929b96;
+
+    text-transform: uppercase;
+
+    letter-spacing: .7px;
+
+    font-weight: 700;
+
+}
+
+
+.info-value {
+
+    font-size: 10px;
+
+    font-weight: 800;
+
+    color:
+        #374151;
+
+    margin-top: 3px;
+
+    white-space: nowrap;
+
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+
+}
+
+
+/* =========================================================
+   ÚLTIMO EVENTO
+========================================================= */
+
+.ultimo-evento {
+
+    border-top:
+        1px solid var(--borda-clara);
+
+    padding:
+        14px 19px;
+
+}
+
+
+.ultimo-evento-label {
+
+    font-size: 7px;
+
+    text-transform: uppercase;
+
+    letter-spacing: .8px;
+
+    color:
+        #929b96;
+
+    font-weight: 700;
+
+    margin-bottom: 5px;
+
+}
+
+
+.ultimo-evento-texto {
+
+    font-size: 9px;
+
+    color:
+        #4b5563;
+
+    line-height: 1.45;
+
+}
+
+
+.ultimo-evento-hora {
+
+    display: block;
+
+    margin-top: 4px;
+
+    color:
+        #929b96;
+
+    font-size: 8px;
+
+}
+
+
+/* =========================================================
+   AÇÕES DO POSTO
+========================================================= */
+
+.posto-acoes {
+
+    display: flex;
+
+    gap: 8px;
+
+    padding:
+        13px 19px 17px;
+
+}
+
+
+.btn {
+
+    border: 0;
+
+    border-radius: 10px;
+
+    padding:
+        9px 12px;
+
+    font-size: 8px;
+
+    font-weight: 800;
+
+    cursor: pointer;
+
+    transition:
+        background .15s ease,
+        transform .15s ease;
+
+    display: inline-flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    gap: 5px;
+
+}
+
+
+.btn:hover {
+
+    transform:
+        translateY(-1px);
+
+}
+
+
+.btn-atualizar-posto {
+
+    flex: 1;
+
+    background:
+        var(--verde-claro);
+
+    color:
+        var(--verde);
+
+}
+
+
+.btn-atualizar-posto:hover {
+
+    background:
+        #dcefe4;
+
+}
+
+
+.btn-historico {
+
+    flex: 1;
+
+    background:
+        #f3f5f4;
+
+    color:
+        #53605a;
+
+}
+
+
+.btn-historico:hover {
+
+    background:
+        #e9edeb;
+
+}
+
+
+/* =========================================================
+   CARD DE HISTÓRICO
+========================================================= */
+
+.historico-container {
+
+    margin-top: 20px;
+
+    background:
+        white;
+
+    border:
+        1px solid var(--borda);
+
+    border-radius: 21px;
+
+    overflow: hidden;
+
+    box-shadow:
+        var(--sombra);
+
+}
+
+
+.historico-header {
+
+    padding:
+        20px 23px;
+
+    border-bottom:
+        1px solid var(--borda-clara);
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    gap: 15px;
+
+}
+
+
+.historico-titulo {
+
+    font-size: 14px;
+
+    font-weight: 800;
+
+}
+
+
+.historico-subtitulo {
+
+    font-size: 9px;
+
+    color:
+        #929b96;
+
+    margin-top: 4px;
+
+}
+
+
+.historico-filtro {
+
+    border:
+        1px solid var(--borda);
+
+    background:
+        white;
+
+    color:
+        #374151;
+
+    border-radius: 9px;
+
+    padding:
+        8px 10px;
+
+    font-size: 9px;
+
+    outline: none;
+
+}
+
+
+.historico-filtro:focus {
+
+    border-color:
+        var(--verde);
+
+}
+
+
+/* =========================================================
+   LISTA DE HISTÓRICO
+========================================================= */
+
+.historico-lista {
+
+    max-height: 430px;
+
+    overflow-y: auto;
+
+}
+
+
+.historico-item {
+
+    display: grid;
+
+    grid-template-columns:
+        40px
+        minmax(140px, 1fr)
+        minmax(150px, 1fr)
+        150px;
+
+    gap: 15px;
+
+    align-items: center;
+
+    padding:
+        13px 23px;
+
+    border-bottom:
+        1px solid #f0f2f1;
+
+}
+
+
+.historico-item:last-child {
+
+    border-bottom:
+        0;
+
+}
+
+
+.historico-icone {
+
+    width: 30px;
+
+    height: 30px;
+
+    border-radius: 9px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    font-size: 13px;
+
+}
+
+
+.historico-icone.online {
+
+    background:
+        var(--verde-claro);
+
+}
+
+
+.historico-icone.offline {
+
+    background:
+        var(--vermelho-claro);
+
+}
+
+
+.historico-icone.paused {
+
+    background:
+        var(--laranja-claro);
+
+}
+
+
+.historico-icone.waiting {
+
+    background:
+        #fff8df;
+
+}
+
+
+.historico-posto {
+
+    font-size: 9px;
+
+    font-weight: 800;
+
+}
+
+
+.historico-evento {
+
+    font-size: 9px;
+
+    color:
+        #4b5563;
+
+}
+
+
+.historico-data {
+
+    font-size: 8px;
+
+    color:
+        #929b96;
+
+    text-align: right;
+
+    font-variant-numeric:
+        tabular-nums;
+
+}
+
+
+/* =========================================================
+   ESTADO VAZIO
+========================================================= */
+
+.estado-vazio {
+
+    padding:
+        40px 20px;
+
+    text-align: center;
+
+    color:
+        #929b96;
+
+    font-size: 10px;
+
+}
+
+
+.estado-vazio-icone {
+
+    font-size: 25px;
+
+    margin-bottom: 8px;
+
+    opacity: .7;
+
+}
+
+
+/* =========================================================
+   MODAL HISTÓRICO
+========================================================= */
+
+.modal {
+
+    position: fixed;
+
+    inset: 0;
+
+    background:
+        rgba(15, 30, 21, .48);
+
+    display: none;
+
+    align-items: center;
+
+    justify-content: center;
+
+    padding: 20px;
+
+    z-index: 1000;
+
+    backdrop-filter:
+        blur(3px);
+
+}
+
+
+.modal.ativo {
+
+    display: flex;
+
+}
+
+
+.modal-conteudo {
+
+    width: 100%;
+
+    max-width: 850px;
+
+    max-height: 85vh;
+
+    background:
+        white;
+
+    border-radius: 22px;
+
+    overflow: hidden;
+
+    box-shadow:
+        0 25px 70px
+        rgba(0, 0, 0, .20);
+
+    display: flex;
+
+    flex-direction: column;
+
+}
+
+
+.modal-header {
+
+    padding:
+        20px 24px;
+
+    background:
+        linear-gradient(
+            135deg,
+            var(--verde),
+            var(--verde-escuro)
+        );
+
+    color: white;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    gap: 15px;
+
+}
+
+
+.modal-titulo {
+
+    font-size: 15px;
+
+    font-weight: 800;
+
+}
+
+
+.modal-subtitulo {
+
+    font-size: 9px;
+
+    opacity: .7;
+
+    margin-top: 4px;
+
+}
+
+
+.modal-fechar {
+
+    width: 34px;
+
+    height: 34px;
+
+    border: 0;
+
+    border-radius: 10px;
+
+    background:
+        rgba(255,255,255,.12);
+
+    color: white;
+
+    cursor: pointer;
+
+    font-size: 16px;
+
+}
+
+
+.modal-fechar:hover {
+
+    background:
+        rgba(255,255,255,.20);
+
+}
+
+
+.modal-corpo {
+
+    overflow-y: auto;
+
+    padding: 0;
+
+}
+
+
+/* =========================================================
+   NOTIFICAÇÃO
+========================================================= */
+
+.toast {
+
+    position: fixed;
+
+    right: 22px;
+
+    bottom: 22px;
+
+    min-width: 260px;
+
+    max-width: 360px;
+
+    background:
+        #1f2937;
+
+    color: white;
+
+    border-radius: 13px;
+
+    padding:
+        13px 16px;
+
+    box-shadow:
+        0 12px 35px
+        rgba(0,0,0,.18);
+
+    font-size: 10px;
+
+    z-index: 2000;
+
+    opacity: 0;
+
+    transform:
+        translateY(15px);
+
+    pointer-events: none;
+
+    transition:
+        opacity .2s ease,
+        transform .2s ease;
+
+}
+
+
+.toast.exibir {
+
+    opacity: 1;
+
+    transform:
+        translateY(0);
+
+}
+
+
+.toast.sucesso {
+
+    border-left:
+        4px solid var(--verde);
+
+}
+
+
+.toast.erro {
+
+    border-left:
+        4px solid var(--vermelho);
+
+}
+
+
+.toast.aviso {
+
+    border-left:
+        4px solid var(--amarelo);
+
+}
+
+
+/* =========================================================
+   LOADING
+========================================================= */
+
+.loading-overlay {
+
+    position: fixed;
+
+    inset: 0;
+
+    background:
+        rgba(255,255,255,.72);
+
+    display: none;
+
+    align-items: center;
+
+    justify-content: center;
+
+    z-index: 3000;
+
+    backdrop-filter:
+        blur(2px);
+
+}
+
+
+.loading-overlay.ativo {
+
+    display: flex;
+
+}
+
+
+.loading-box {
+
+    background:
+        white;
+
+    border:
+        1px solid var(--borda);
+
+    border-radius: 17px;
+
+    padding:
+        20px 25px;
+
+    box-shadow:
+        0 15px 45px
+        rgba(0,0,0,.10);
+
+    text-align: center;
+
+}
+
+
+.spinner {
+
+    width: 30px;
+
+    height: 30px;
+
+    border:
+        3px solid #e4ebe6;
+
+    border-top-color:
+        var(--verde);
+
+    border-radius: 50%;
+
+    animation:
+        girar .8s linear infinite;
+
+    margin:
+        0 auto 10px;
+
+}
+
+
+@keyframes girar {
+
+    to {
+        transform: rotate(360deg);
+    }
+
+}
+
+
+.loading-text {
+
+    font-size: 10px;
+
+    color:
+        #66716b;
+
+}
+
+
+/* =========================================================
+   RODAPÉ
+========================================================= */
+
+.footer {
+
+    text-align: center;
+
+    padding:
+        22px 5px 5px;
+
+    font-size: 9px;
+
+    color:
+        #89918c;
+
+}
+
+
+.footer strong {
+
+    color:
+        var(--verde);
+
+}
+
+
+/* =========================================================
+   SCROLLBAR
+========================================================= */
+
+::-webkit-scrollbar {
+
+    width: 7px;
+
+    height: 7px;
+
+}
+
+
+::-webkit-scrollbar-track {
+
+    background:
+        #f2f5f3;
+
+}
+
+
+::-webkit-scrollbar-thumb {
+
+    background:
+        #c8d2cc;
+
+    border-radius: 20px;
+
+}
+
+
+::-webkit-scrollbar-thumb:hover {
+
+    background:
+        #aebbb3;
+
+}
+
+
+/* =========================================================
+   SELEÇÃO
+========================================================= */
+
+::selection {
+
+    background:
+        #cfe8d8;
+
+    color:
+        #075228;
+
+}
+
+
+/* =========================================================
+   RESPONSIVO — TABLET
+========================================================= */
+
+@media (max-width: 1100px) {
+
+    body {
+
+        padding: 18px;
+
+    }
+
+
+    .postos-grid {
+
+        grid-template-columns:
+            repeat(2, 1fr);
+
+    }
+
+
+    .resumo {
+
+        grid-template-columns:
+            repeat(2, 1fr);
+
+    }
+
+}
+
+
+/* =========================================================
+   RESPONSIVO — CELULAR
+========================================================= */
+
+@media (max-width: 700px) {
+
+    body {
+
+        padding: 10px;
+
+    }
+
+
+    .header {
+
+        flex-direction: column;
+
+        align-items: flex-start;
+
+        padding: 22px;
+
+    }
+
+
+    .clock {
+
+        text-align: left;
+
+    }
+
+
+    .titulo {
+
+        font-size: 21px;
+
+    }
+
+
+    .toolbar {
+
+        flex-direction: column;
+
+        align-items: stretch;
+
+    }
+
+
+    .toolbar-actions {
+
+        justify-content: space-between;
+
+    }
+
+
+    .postos-grid {
+
+        grid-template-columns:
+            1fr;
+
+    }
+
+
+    .resumo {
+
+        grid-template-columns:
+            repeat(2, 1fr);
+
+        gap: 10px;
+
+    }
+
+
+    .resumo-card {
+
+        padding:
+            15px;
+
+    }
+
+
+    .resumo-valor {
+
+        font-size: 23px;
+
+    }
+
+
+    .historico-header {
+
+        align-items: flex-start;
+
+        flex-direction: column;
+
+    }
+
+
+    .historico-filtro {
+
+        width: 100%;
+
+    }
+
+
+    .historico-item {
+
+        grid-template-columns:
+            35px 1fr;
+
+        gap: 9px;
+
+    }
+
+
+    .historico-data {
+
+        grid-column:
+            2;
+
+        text-align: left;
+
+    }
+
+
+    .historico-evento {
+
+        grid-column:
+            2;
+
+    }
+
+
+    .modal {
+
+        padding: 10px;
+
+    }
+
+
+    .modal-conteudo {
+
+        max-height: 90vh;
+
+        border-radius: 17px;
+
+    }
+
+
+    .toast {
+
+        left: 10px;
+
+        right: 10px;
+
+        bottom: 10px;
+
+        max-width: none;
+
+    }
+
+}
+
+
+/* =========================================================
+   CELULAR PEQUENO
+========================================================= */
+
+@media (max-width: 430px) {
+
+    .marca {
+
+        align-items:
+            flex-start;
+
+    }
+
+
+    .icone {
+
+        width: 48px;
+
+        height: 48px;
+
+        font-size: 23px;
+
+    }
+
+
+    .empresa {
+
+        font-size: 8px;
+
+    }
+
+
+    .titulo {
+
+        font-size: 18px;
+
+    }
+
+
+    .subtitulo {
+
+        font-size: 9px;
+
+    }
+
+
+    .resumo {
+
+        grid-template-columns:
+            1fr 1fr;
+
+    }
+
+
+    .posto-header {
+
+        padding: 16px;
+
+    }
+
+
+    .posto-nome {
+
+        font-size: 12px;
+
+    }
+
+
+    .status {
+
+        font-size: 7px;
+
+        padding:
+            6px 8px;
+
+    }
+
+
+    .status-area {
+
+        padding:
+            16px;
+
+    }
+
+
+    .ultimo-evento {
+
+        padding:
+            13px 16px;
+
+    }
+
+
+    .posto-acoes {
+
+        padding:
+            11px 16px 15px;
+
+    }
+
+}
