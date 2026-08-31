@@ -131,6 +131,20 @@
     .btn-cinza { background: #475569; }
     .btn-cinza:hover { background: #334155; }
 
+    /* AVISO DESTACADO */
+    .aviso {
+      background: #1e293b;
+      border: 2px solid #2563eb;
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 20px;
+      display: none;
+    }
+    .aviso.visivel { display: block; }
+    .aviso h3 { font-size: 1rem; color: #fff; margin-bottom: 8px; }
+    .aviso p { font-size: 0.9rem; color: #cbd5e1; }
+    .aviso .aviso-status { font-weight: 800; }
+
     .modal {
       position: fixed;
       inset: 0;
@@ -188,3 +202,5 @@
     .rodape { text-align: center; color: #64748b; font-size: 0.8rem; padding: 10px 0; }
   </style>
 </head>
+<body>
+  <div class="container">
