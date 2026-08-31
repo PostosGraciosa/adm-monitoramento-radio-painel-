@@ -2,690 +2,684 @@
 MONITORAMENTO DE RÁDIO
 POSTOS GRACIOSA
 PAINEL ADMINISTRATIVO
+APP.JS
 ========================================================= */
 
 /* =========================================================
-VARIÁVEIS
+CONFIGURAÇÕES
 ========================================================= */
 
-:root {
+const CONFIG = {
 
-```
---verde:
-    #0e6835;
+ 
+API_URL:
+    "https://script.google.com/macros/s/AKfycbyTJwiUpuNO1a3-u5IGYL6V-sMPZweH4Ph-xT2KS8q9xt0nE0sCG4nnyH4ZrcdP9ZZK/exec",
 
---verde-escuro:
-    #075228;
+INTERVALO_ATUALIZACAO:
+    60000,
 
---verde-claro:
-    #eaf7ef;
+CHAVE:
+    "GRACIOSA_RADIO_2026",
 
---amarelo:
-    #e7b91d;
+LIMITE_HISTORICO:
+    100,
 
---vermelho:
-    #8e1b1c;
+STORAGE:
+    "painel_monitoramento_radio_v1"
+ 
 
---vermelho-claro:
-    #ffeded;
+};
 
---cinza-fundo:
-    #f3f7f4;
+/* =========================================================
+POSTOS
+========================================================= */
 
---cinza-borda:
-    #e1e9e4;
+const POSTOS = [
 
---cinza-linha:
-    #edf1ee;
+ 
+{
+    codigo: "graciosa",
+    nome: "POSTO GRACIOSA"
+},
 
---cinza-texto:
-    #66716b;
+{
+    codigo: "fatima",
+    nome: "POSTO FÁTIMA"
+},
 
---cinza-claro:
-    #89918c;
+{
+    codigo: "jariva",
+    nome: "POSTO JARIVA"
+},
 
---texto:
-    #1f2937;
+{
+    codigo: "bemer",
+    nome: "POSTO BEMER"
+},
 
---branco:
-    #ffffff;
+{
+    codigo: "graciosa-v",
+    nome: "POSTO GRACIOSA V"
+},
 
---sombra:
-    0 10px 35px
-    rgba(0, 0, 0, .055);
+{
+    codigo: "pirai",
+    nome: "POSTO PIRAÍ"
+}
+ 
 
---sombra-forte:
-    0 16px 45px
-    rgba(0, 0, 0, .08);
-```
+];
+
+/* =========================================================
+ESTADO
+========================================================= */
+
+let dadosPostos = {};
+
+let historicos = {};
+
+let ultimaAtualizacao = null;
+
+let atualizando = false;
+
+/* =========================================================
+ELEMENTO
+========================================================= */
+
+function elemento(id) {
+
+ 
+return document.getElementById(id);
+ 
 
 }
 
 /* =========================================================
-RESET
+ESTADO INICIAL
 ========================================================= */
 
-* {
+function criarEstadoInicial() {
 
-  margin:
-  0;
+ 
+POSTOS.forEach(posto => {
 
-  padding:
-  0;
+    if (!dadosPostos[posto.codigo]) {
 
-  box-sizing:
-  border-box;
+        dadosPostos[posto.codigo] = {
+
+            codigo:
+                posto.codigo,
+
+            nome:
+                posto.nome,
+
+            status:
+                "verificando",
+
+            evento:
+                "Aguardando atualização",
+
+            dataHora:
+                "--/--/---- às --:--:--",
+
+            timestamp:
+                0
+
+        };
+
+    }
+
+    if (!historicos[posto.codigo]) {
+
+        historicos[posto.codigo] = [];
+
+    }
+
+});
+ 
 
 }
 
-html {
+/* =========================================================
+CARREGAR STORAGE
+========================================================= */
 
-```
-min-height:
-    100%;
+function carregarStorage() {
 
-scroll-behavior:
-    smooth;
-```
+ 
+try {
+
+    const armazenado =
+        localStorage.getItem(
+            CONFIG.STORAGE
+        );
+
+    if (!armazenado) {
+
+        criarEstadoInicial();
+
+        return;
+
+    }
+
+    const dados =
+        JSON.parse(
+            armazenado
+        );
+
+    if (
+        dados &&
+        dados.postos &&
+        typeof dados.postos === "object"
+    ) {
+
+        dadosPostos =
+            dados.postos;
+
+    }
+
+    if (
+        dados &&
+        dados.historicos &&
+        typeof dados.historicos === "object"
+    ) {
+
+        historicos =
+            dados.historicos;
+
+    }
+
+    if (
+        dados &&
+        dados.ultimaAtualizacao
+    ) {
+
+        ultimaAtualizacao =
+            Number(
+                dados.ultimaAtualizacao
+            ) || null;
+
+    }
 
 }
 
-body {
+catch (erro) {
 
-```
-min-height:
-    100vh;
-
-font-family:
-    Arial,
-    Helvetica,
-    sans-serif;
-
-color:
-    var(--texto);
-
-background:
-    linear-gradient(
-        135deg,
-        #eef5f0 0%,
-        #f8faf9 50%,
-        #f1f6f3 100%
+    console.warn(
+        "Erro ao carregar armazenamento local:",
+        erro
     );
 
-padding:
-    25px;
-```
+}
+
+criarEstadoInicial();
+ 
 
 }
 
 /* =========================================================
-CONTAINER
+SALVAR STORAGE
 ========================================================= */
 
-.container {
+function salvarStorage() {
 
-```
-width:
-    100%;
+ 
+try {
 
-max-width:
-    1450px;
+    localStorage.setItem(
 
-margin:
-    0 auto;
-```
+        CONFIG.STORAGE,
 
-}
+        JSON.stringify({
 
-/* =========================================================
-CABEÇALHO
-========================================================= */
+            postos:
+                dadosPostos,
 
-.header {
+            historicos:
+                historicos,
 
-```
-width:
-    100%;
+            ultimaAtualizacao:
+                ultimaAtualizacao
 
-min-height:
-    145px;
+        })
 
-display:
-    flex;
-
-align-items:
-    center;
-
-justify-content:
-    space-between;
-
-gap:
-    30px;
-
-padding:
-    28px 32px;
-
-margin-bottom:
-    18px;
-
-color:
-    white;
-
-border-radius:
-    24px;
-
-background:
-    linear-gradient(
-        135deg,
-        var(--verde),
-        var(--verde-escuro)
     );
 
-box-shadow:
-    0 15px 40px
-    rgba(14, 104, 53, .16);
-```
-
 }
 
-.header-left {
+catch (erro) {
 
-```
-display:
-    flex;
-
-align-items:
-    center;
-
-gap:
-    17px;
-
-min-width:
-    0;
-```
+    console.warn(
+        "Erro ao salvar armazenamento local:",
+        erro
+    );
 
 }
-
-.brand-icon {
-
-```
-width:
-    62px;
-
-height:
-    62px;
-
-flex-shrink:
-    0;
-
-display:
-    flex;
-
-align-items:
-    center;
-
-justify-content:
-    center;
-
-border-radius:
-    18px;
-
-background:
-    rgba(255, 255, 255, .13);
-
-border:
-    1px solid
-    rgba(255, 255, 255, .08);
-
-font-size:
-    29px;
-```
-
-}
-
-.brand-info {
-
-```
-min-width:
-    0;
-```
-
-}
-
-.company-name {
-
-```
-margin-bottom:
-    5px;
-
-font-size:
-    10px;
-
-font-weight:
-    800;
-
-letter-spacing:
-    1.7px;
-
-text-transform:
-    uppercase;
-
-opacity:
-    .72;
-```
-
-}
-
-.header h1 {
-
-```
-font-size:
-    27px;
-
-line-height:
-    1.15;
-
-font-weight:
-    800;
-```
-
-}
-
-.header p {
-
-```
-margin-top:
-    6px;
-
-font-size:
-    11px;
-
-line-height:
-    1.4;
-
-opacity:
-    .72;
-```
-
-}
-
-.header-right {
-
-```
-flex-shrink:
-    0;
-```
-
-}
-
-.clock-area {
-
-```
-min-width:
-    150px;
-
-text-align:
-    right;
-```
-
-}
-
-.clock-label {
-
-```
-font-size:
-    9px;
-
-font-weight:
-    700;
-
-letter-spacing:
-    1.2px;
-
-text-transform:
-    uppercase;
-
-opacity:
-    .62;
-```
-
-}
-
-.clock {
-
-```
-margin-top:
-    3px;
-
-font-size:
-    28px;
-
-line-height:
-    1;
-
-font-weight:
-    800;
-
-font-variant-numeric:
-    tabular-nums;
-```
-
-}
-
-.date {
-
-```
-margin-top:
-    7px;
-
-font-size:
-    10px;
-
-opacity:
-    .68;
-```
+ 
 
 }
 
 /* =========================================================
-BARRA DE CONTROLE
+RELÓGIO
 ========================================================= */
 
-.control-bar {
+function atualizarRelogio() {
 
-```
-min-height:
-    74px;
+ 
+const agora =
+    new Date();
 
-display:
-    flex;
+const clock =
+    elemento("clock");
 
-align-items:
-    center;
+const date =
+    elemento("date");
 
-justify-content:
-    space-between;
+if (clock) {
 
-gap:
-    20px;
-
-padding:
-    15px 20px;
-
-margin-bottom:
-    18px;
-
-background:
-    var(--branco);
-
-border:
-    1px solid
-    var(--cinza-borda);
-
-border-radius:
-    18px;
-
-box-shadow:
-    var(--sombra);
-```
+    clock.textContent =
+        agora.toLocaleTimeString(
+            "pt-BR"
+        );
 
 }
 
-.control-info {
+if (date) {
 
-```
-display:
-    flex;
+    date.textContent =
+        agora.toLocaleDateString(
+            "pt-BR",
+            {
+                weekday: "long",
+                day: "2-digit",
+                month: "long",
+                year: "numeric"
+            }
+        );
 
-align-items:
-    center;
-
-flex-wrap:
-    wrap;
-
-gap:
-    12px;
-
-min-width:
-    0;
-```
+}
+ 
 
 }
 
-.control-status {
+/* =========================================================
+FORMATAR DATA/HORA
+========================================================= */
 
-```
-display:
-    inline-flex;
+function formatarDataHora(timestamp) {
 
-align-items:
-    center;
+ 
+if (!timestamp) {
 
-gap:
-    8px;
-
-padding:
-    7px 11px;
-
-border-radius:
-    30px;
-
-background:
-    #f4f7f5;
-
-font-size:
-    10px;
-
-font-weight:
-    800;
-
-text-transform:
-    uppercase;
-```
+    return "--/--/---- às --:--:--";
 
 }
 
-.connection-dot {
+const data =
+    new Date(
+        Number(timestamp)
+    );
 
-```
-width:
-    8px;
+if (
+    Number.isNaN(
+        data.getTime()
+    )
+) {
 
-height:
-    8px;
-
-flex-shrink:
-    0;
-
-border-radius:
-    50%;
-
-background:
-    var(--amarelo);
-
-box-shadow:
-    0 0 0 4px
-    rgba(231, 185, 29, .12);
-```
+    return "--/--/---- às --:--:--";
 
 }
 
-.connection-dot.connected {
+return (
 
-```
-background:
-    var(--verde);
+    data.toLocaleDateString(
+        "pt-BR"
+    )
 
-box-shadow:
-    0 0 0 4px
-    rgba(14, 104, 53, .12);
-```
+    +
 
-}
+    " às "
 
-.connection-dot.error {
+    +
 
-```
-background:
-    var(--vermelho);
+    data.toLocaleTimeString(
+        "pt-BR"
+    )
 
-box-shadow:
-    0 0 0 4px
-    rgba(142, 27, 28, .12);
-```
+);
+ 
 
 }
 
-.last-update {
+/* =========================================================
+NORMALIZAR STATUS
+========================================================= */
 
-```
-color:
-    var(--cinza-claro);
+function normalizarStatus(status) {
 
-font-size:
-    10px;
-```
+ 
+const valor =
+    String(
+        status || ""
+    )
+    .trim()
+    .toLowerCase();
 
-}
+if (
+    valor === "online" ||
+    valor === "ativo" ||
+    valor === "playing" ||
+    valor === "playing"
+) {
 
-.refresh-button {
-
-```
-min-height:
-    40px;
-
-display:
-    inline-flex;
-
-align-items:
-    center;
-
-justify-content:
-    center;
-
-gap:
-    8px;
-
-padding:
-    0 17px;
-
-border:
-    0;
-
-border-radius:
-    11px;
-
-background:
-    var(--verde);
-
-color:
-    white;
-
-font-family:
-    inherit;
-
-font-size:
-    10px;
-
-font-weight:
-    800;
-
-text-transform:
-    uppercase;
-
-cursor:
-    pointer;
-
-box-shadow:
-    0 5px 14px
-    rgba(14, 104, 53, .16);
-
-transition:
-    transform .15s ease,
-    background .15s ease,
-    box-shadow .15s ease;
-```
+    return "online";
 
 }
 
-.refresh-button:hover {
+if (
+    valor === "pausado" ||
+    valor === "paused"
+) {
 
-```
-background:
-    var(--verde-escuro);
-
-transform:
-    translateY(-1px);
-
-box-shadow:
-    0 7px 18px
-    rgba(14, 104, 53, .22);
-```
+    return "pausado";
 
 }
 
-.refresh-button:active {
+if (
+    valor === "offline" ||
+    valor === "off"
+) {
 
-```
-transform:
-    translateY(0);
-```
-
-}
-
-.refresh-button.loading {
-
-```
-pointer-events:
-    none;
-
-opacity:
-    .78;
-```
+    return "offline";
 
 }
 
-.refresh-icon {
-
-```
-display:
-    inline-block;
-
-font-size:
-    18px;
-
-line-height:
-    1;
-```
+return "verificando";
+ 
 
 }
 
-.refresh-button.loading .refresh-icon {
+/* =========================================================
+TEXTO STATUS
+========================================================= */
 
-```
-animation:
-    girar .8s linear infinite;
-```
+function textoStatus(status) {
+
+ 
+switch (
+    normalizarStatus(status)
+) {
+
+    case "online":
+        return "ATIVO";
+
+    case "pausado":
+        return "PAUSADO";
+
+    case "offline":
+        return "OFFLINE";
+
+    default:
+        return "VERIFICANDO";
+
+}
+ 
 
 }
 
-@keyframes girar {
+/* =========================================================
+CLASSE STATUS
+========================================================= */
 
-```
-from {
+function classeStatus(status) {
 
-    transform:
-        rotate(0deg);
+ 
+switch (
+    normalizarStatus(status)
+) {
+
+    case "online":
+        return "status-online";
+
+    case "pausado":
+        return "status-paused";
+
+    case "offline":
+        return "status-offline";
+
+    default:
+        return "status-checking";
+
+}
+ 
 
 }
 
-to {
+/* =========================================================
+CLASSE CARD
+========================================================= */
 
-    transform:
-        rotate(360deg);
+function classeCardStatus(status) {
+
+ 
+switch (
+    normalizarStatus(status)
+) {
+
+    case "online":
+        return "is-online";
+
+    case "pausado":
+        return "is-paused";
+
+    case "offline":
+        return "is-offline";
+
+    default:
+        return "is-checking";
 
 }
-```
+ 
+
+}
+
+/* =========================================================
+ÍCONE STATUS
+========================================================= */
+
+function iconeStatus(status) {
+
+ 
+switch (
+    normalizarStatus(status)
+) {
+
+    case "online":
+        return "🟢";
+
+    case "pausado":
+        return "🟡";
+
+    case "offline":
+        return "🔴";
+
+    default:
+        return "🔵";
+
+}
+ 
+
+}
+
+/* =========================================================
+ESCAPAR HTML
+========================================================= */
+
+function escapeHTML(texto) {
+
+ 
+return String(
+    texto || ""
+)
+
+.replace(
+    /&/g,
+    "&amp;"
+)
+
+.replace(
+    /</g,
+    "&lt;"
+)
+
+.replace(
+    />/g,
+    "&gt;"
+)
+
+.replace(
+    /"/g,
+    "&quot;"
+)
+
+.replace(
+    /'/g,
+    "&#039;"
+);
+ 
+
+}
+
+/* =========================================================
+ATUALIZAR CARD
+========================================================= */
+
+function atualizarCard(codigo) {
+
+ 
+const dados =
+    dadosPostos[codigo];
+
+if (!dados) {
+
+    return;
+
+}
+
+const status =
+    normalizarStatus(
+        dados.status
+    );
+
+const card =
+    document.querySelector(
+        `.station-card[data-posto="${codigo}"]`
+    );
+
+if (!card) {
+
+    console.warn(
+        "Card não encontrado:",
+        codigo
+    );
+
+    return;
+
+}
+
+card.classList.remove(
+    "is-online",
+    "is-paused",
+    "is-offline",
+    "is-checking"
+);
+
+card.classList.add(
+    classeCardStatus(status)
+);
+
+
+const statusElemento =
+    elemento(
+        `status-${codigo}`
+    );
+
+if (statusElemento) {
+
+    statusElemento.className =
+        "status " +
+        classeStatus(status);
+
+    statusElemento.innerHTML = `
+
+        <span class="status-dot"></span>
+
+        ${textoStatus(status)}
+
+    `;
+
+}
+
+
+const atividade =
+    elemento(
+        `atividade-${codigo}`
+    );
+
+if (atividade) {
+
+    atividade.textContent =
+        dados.evento ||
+        "Nenhum evento recebido.";
+
+}
+
+
+const atualizacao =
+    elemento(
+        `atualizacao-${codigo}`
+    );
+
+if (atualizacao) {
+
+    atualizacao.textContent =
+        dados.dataHora ||
+        "--/--/---- às --:--:--";
+
+}
+
+
+const evento =
+    elemento(
+        `evento-${codigo}`
+    );
+
+if (evento) {
+
+    evento.textContent =
+        dados.evento ||
+        "Nenhum evento recebido.";
+
+}
+ 
+
+}
+
+/* =========================================================
+ATUALIZAR TODOS OS CARDS
+========================================================= */
+
+function atualizarCards() {
+
+ 
+POSTOS.forEach(
+    posto => {
+        atualizarCard(
+            posto.codigo
+        );
+    }
+);
+ 
 
 }
 
@@ -693,2128 +687,1357 @@ to {
 RESUMO
 ========================================================= */
 
-.summary-grid {
+function atualizarResumo() {
 
-```
-display:
-    grid;
+ 
+let ativos = 0;
 
-grid-template-columns:
-    repeat(4, 1fr);
+let pausados = 0;
 
-gap:
-    15px;
+let verificando = 0;
 
-margin-bottom:
-    30px;
-```
+POSTOS.forEach(posto => {
 
-}
+    const dados =
+        dadosPostos[
+            posto.codigo
+        ];
 
-.summary-card {
+    const status =
+        normalizarStatus(
+            dados
+                ? dados.status
+                : "verificando"
+        );
 
-```
-min-height:
-    100px;
+    if (
+        status === "online"
+    ) {
 
-display:
-    flex;
+        ativos++;
 
-align-items:
-    center;
+    }
 
-gap:
-    15px;
+    else if (
+        status === "pausado"
+    ) {
 
-padding:
-    18px 20px;
+        pausados++;
 
-background:
-    var(--branco);
+    }
 
-border:
-    1px solid
-    var(--cinza-borda);
+    else {
 
-border-radius:
-    18px;
+        verificando++;
 
-box-shadow:
-    var(--sombra);
+    }
 
-position:
-    relative;
+});
 
-overflow:
-    hidden;
-```
 
-}
+atualizarElemento(
+    "totalPostos",
+    POSTOS.length
+);
 
-.summary-card::after {
+atualizarElemento(
+    "totalAtivos",
+    ativos
+);
 
-```
-content:
-    "";
+atualizarElemento(
+    "totalPausados",
+    pausados
+);
 
-position:
-    absolute;
-
-right:
-    -25px;
-
-bottom:
-    -35px;
-
-width:
-    90px;
-
-height:
-    90px;
-
-border-radius:
-    50%;
-
-background:
-    rgba(14, 104, 53, .035);
-```
-
-}
-
-.summary-icon {
-
-```
-width:
-    47px;
-
-height:
-    47px;
-
-flex-shrink:
-    0;
-
-display:
-    flex;
-
-align-items:
-    center;
-
-justify-content:
-    center;
-
-border-radius:
-    14px;
-
-background:
-    #f1f5f2;
-
-font-size:
-    20px;
-```
-
-}
-
-.summary-content {
-
-```
-min-width:
-    0;
-```
-
-}
-
-.summary-label {
-
-```
-color:
-    var(--cinza-claro);
-
-font-size:
-    8px;
-
-font-weight:
-    800;
-
-letter-spacing:
-    .9px;
-
-text-transform:
-    uppercase;
-```
-
-}
-
-.summary-value {
-
-```
-margin-top:
-    3px;
-
-color:
-    var(--texto);
-
-font-size:
-    27px;
-
-line-height:
-    1;
-
-font-weight:
-    800;
-
-font-variant-numeric:
-    tabular-nums;
-```
-
-}
-
-.summary-online .summary-icon {
-
-```
-background:
-    var(--verde-claro);
-```
-
-}
-
-.summary-paused .summary-icon {
-
-```
-background:
-    #fff3f3;
-```
-
-}
-
-.summary-offline .summary-icon {
-
-```
-background:
-    #f1f2f2;
-```
+atualizarElemento(
+    "totalVerificando",
+    verificando
+);
+ 
 
 }
 
 /* =========================================================
-CABEÇALHO DA SEÇÃO
+ATUALIZAR ELEMENTO
 ========================================================= */
 
-.section-heading {
+function atualizarElemento(
+id,
+valor
+) {
 
-```
-display:
-    flex;
+ 
+const el =
+    elemento(id);
 
-align-items:
-    flex-end;
+if (el) {
 
-justify-content:
-    space-between;
-
-gap:
-    20px;
-
-margin-bottom:
-    15px;
-```
+    el.textContent =
+        valor;
 
 }
-
-.section-kicker {
-
-```
-margin-bottom:
-    4px;
-
-color:
-    var(--verde);
-
-font-size:
-    9px;
-
-font-weight:
-    800;
-
-letter-spacing:
-    1.2px;
-
-text-transform:
-    uppercase;
-```
-
-}
-
-.section-heading h2 {
-
-```
-font-size:
-    20px;
-
-line-height:
-    1.2;
-
-font-weight:
-    800;
-```
-
-}
-
-.section-heading p {
-
-```
-margin-top:
-    5px;
-
-color:
-    var(--cinza-claro);
-
-font-size:
-    10px;
-```
-
-}
-
-.auto-refresh {
-
-```
-display:
-    inline-flex;
-
-align-items:
-    center;
-
-gap:
-    7px;
-
-padding:
-    8px 11px;
-
-color:
-    var(--cinza-texto);
-
-background:
-    rgba(255, 255, 255, .75);
-
-border:
-    1px solid
-    var(--cinza-borda);
-
-border-radius:
-    20px;
-
-font-size:
-    9px;
-
-white-space:
-    nowrap;
-```
-
-}
-
-.auto-refresh strong {
-
-```
-color:
-    var(--verde);
-
-font-weight:
-    800;
-```
-
-}
-
-.pulse {
-
-```
-width:
-    7px;
-
-height:
-    7px;
-
-border-radius:
-    50%;
-
-background:
-    var(--verde);
-
-box-shadow:
-    0 0 0 4px
-    rgba(14, 104, 53, .10);
-
-animation:
-    pulsar 2s infinite;
-```
-
-}
-
-@keyframes pulsar {
-
-```
-0%,
-100% {
-
-    opacity:
-        1;
-
-    transform:
-        scale(1);
-
-}
-
-50% {
-
-    opacity:
-        .55;
-
-    transform:
-        scale(.82);
-
-}
-```
+ 
 
 }
 
 /* =========================================================
-GRID DOS POSTOS
+ÚLTIMA ATUALIZAÇÃO
 ========================================================= */
 
-.stations-grid {
+function atualizarUltimaAtualizacao() {
 
-```
-display:
-    grid;
+ 
+const el =
+    elemento("lastUpdate");
 
-grid-template-columns:
-    repeat(3, 1fr);
+if (!el) {
 
-gap:
-    17px;
-```
+    return;
 
 }
 
-.station-card {
+if (!ultimaAtualizacao) {
 
-```
-min-width:
-    0;
+    el.textContent =
+        "Aguardando primeira atualização...";
 
-background:
-    var(--branco);
-
-border:
-    1px solid
-    var(--cinza-borda);
-
-border-radius:
-    20px;
-
-overflow:
-    hidden;
-
-box-shadow:
-    var(--sombra);
-
-transition:
-    transform .18s ease,
-    box-shadow .18s ease,
-    border-color .18s ease;
-```
+    return;
 
 }
 
-.station-card:hover {
-
-```
-transform:
-    translateY(-2px);
-
-box-shadow:
-    var(--sombra-forte);
-```
-
-}
-
-.station-card-header {
-
-```
-display:
-    flex;
-
-align-items:
-    flex-start;
-
-justify-content:
-    space-between;
-
-gap:
-    12px;
-
-padding:
-    18px;
-
-border-bottom:
-    1px solid
-    var(--cinza-linha);
-```
-
-}
-
-.station-identity {
-
-```
-min-width:
-    0;
-
-display:
-    flex;
-
-align-items:
-    center;
-
-gap:
-    11px;
-```
-
-}
-
-.station-icon {
-
-```
-width:
-    43px;
-
-height:
-    43px;
-
-flex-shrink:
-    0;
-
-display:
-    flex;
-
-align-items:
-    center;
-
-justify-content:
-    center;
-
-border-radius:
-    13px;
-
-background:
-    #eef7f1;
-
-font-size:
-    18px;
-```
-
-}
-
-.station-identity h3 {
-
-```
-overflow:
-    hidden;
-
-color:
-    var(--texto);
-
-font-size:
-    12px;
-
-line-height:
-    1.25;
-
-font-weight:
-    800;
-
-text-overflow:
-    ellipsis;
-
-white-space:
-    nowrap;
-```
-
-}
-
-.station-identity span {
-
-```
-display:
-    block;
-
-margin-top:
-    4px;
-
-color:
-    var(--cinza-claro);
-
-font-size:
-    8px;
-
-text-transform:
-    uppercase;
-
-letter-spacing:
-    .4px;
-```
+el.textContent =
+    "Última atualização: " +
+    formatarDataHora(
+        ultimaAtualizacao
+    );
+ 
 
 }
 
 /* =========================================================
-STATUS DO POSTO
+STATUS DO SISTEMA
 ========================================================= */
 
-.station-status {
+function atualizarStatusSistema(
+conectado
+) {
 
-```
-display:
-    inline-flex;
+ 
+const el =
+    elemento("systemStatus");
 
-align-items:
-    center;
+if (!el) {
 
-gap:
-    6px;
-
-flex-shrink:
-    0;
-
-padding:
-    6px 9px;
-
-border-radius:
-    30px;
-
-font-size:
-    7px;
-
-line-height:
-    1;
-
-font-weight:
-    800;
-
-text-transform:
-    uppercase;
-
-white-space:
-    nowrap;
-```
+    return;
 
 }
 
-.status-dot {
+if (conectado) {
 
-```
-width:
-    6px;
+    el.textContent =
+        "● Sistema conectado";
 
-height:
-    6px;
-
-flex-shrink:
-    0;
-
-border-radius:
-    50%;
-
-background:
-    currentColor;
-```
+    el.style.color =
+        "var(--verde)";
 
 }
 
-.status-online {
+else {
 
-```
-color:
-    var(--verde);
+    el.textContent =
+        "● Erro de conexão";
 
-background:
-    var(--verde-claro);
-```
+    el.style.color =
+        "var(--vermelho)";
 
 }
-
-.status-paused {
-
-```
-color:
-    var(--vermelho);
-
-background:
-    var(--vermelho-claro);
-```
-
-}
-
-.status-offline {
-
-```
-color:
-    #555d58;
-
-background:
-    #eef0ef;
-```
-
-}
-
-.status-checking {
-
-```
-color:
-    #9a7500;
-
-background:
-    #fff8df;
-```
+ 
 
 }
 
 /* =========================================================
-ÁREA PRINCIPAL DO CARD
+CONSULTAR API
 ========================================================= */
 
-.station-main {
+async function consultarAPI(
+codigo = ""
+) {
 
-```
-display:
-    grid;
+ 
+let url =
+    CONFIG.API_URL;
 
-grid-template-columns:
-    1fr 1fr;
+const parametros =
+    new URLSearchParams();
 
-gap:
-    15px;
+parametros.set(
+    "acao",
+    "status"
+);
 
-padding:
-    17px 18px;
-```
+parametros.set(
+    "chave",
+    CONFIG.CHAVE
+);
 
-}
+if (codigo) {
 
-.activity-label,
-.contact-label,
-.event-label {
-
-```
-color:
-    var(--cinza-claro);
-
-font-size:
-    7px;
-
-font-weight:
-    800;
-
-letter-spacing:
-    .8px;
-
-text-transform:
-    uppercase;
-```
+    parametros.set(
+        "posto",
+        codigo
+    );
 
 }
 
-.activity-value {
+url +=
+    "?" +
+    parametros.toString();
 
-```
-margin-top:
-    5px;
+console.log(
+    "Consultando API:",
+    url
+);
 
-color:
-    var(--texto);
+const resposta =
+    await fetch(
+        url,
+        {
+            method: "GET",
+            cache: "no-store"
+        }
+    );
 
-font-size:
-    11px;
+if (!resposta.ok) {
 
-line-height:
-    1.35;
-
-font-weight:
-    700;
-```
+    throw new Error(
+        "HTTP " +
+        resposta.status
+    );
 
 }
 
-.contact-value {
+const dados =
+    await resposta.json();
 
-```
-margin-top:
-    5px;
+console.log(
+    "Resposta da API:",
+    dados
+);
 
-color:
-    var(--cinza-texto);
-
-font-size:
-    10px;
-
-line-height:
-    1.35;
-
-font-variant-numeric:
-    tabular-nums;
-```
+return dados;
+ 
 
 }
 
 /* =========================================================
-EVENTO
+APLICAR RESULTADO
 ========================================================= */
 
-.station-event {
+function aplicarResultadoPosto(
+codigo,
+resultado,
+registrar = true
+) {
 
-```
-padding:
-    13px 18px;
+ 
+if (!codigo) {
 
-background:
-    #fafcfb;
-
-border-top:
-    1px solid
-    var(--cinza-linha);
-
-border-bottom:
-    1px solid
-    var(--cinza-linha);
-```
+    return false;
 
 }
 
-.event-value {
+const posto =
+    POSTOS.find(
+        item =>
+            item.codigo ===
+            codigo
+    );
 
-```
-margin-top:
-    5px;
+if (!posto) {
 
-color:
-    #4b5563;
+    console.warn(
+        "Posto desconhecido:",
+        codigo
+    );
 
-font-size:
-    9px;
-
-line-height:
-    1.4;
-```
-
-}
-
-.station-footer {
-
-```
-min-height:
-    48px;
-
-display:
-    flex;
-
-align-items:
-    center;
-
-justify-content:
-    space-between;
-
-gap:
-    10px;
-
-padding:
-    9px 18px;
-```
+    return false;
 
 }
 
-.station-time {
+if (!dadosPostos[codigo]) {
 
-```
-color:
-    var(--cinza-claro);
+    dadosPostos[codigo] = {
 
-font-size:
-    8px;
+        codigo:
+            codigo,
 
-font-variant-numeric:
-    tabular-nums;
-```
+        nome:
+            posto.nome,
 
-}
+        status:
+            "verificando",
 
-.history-button {
+        evento:
+            "Aguardando atualização",
 
-```
-display:
-    inline-flex;
+        dataHora:
+            "--/--/---- às --:--:--",
 
-align-items:
-    center;
+        timestamp:
+            0
 
-gap:
-    6px;
-
-padding:
-    7px 10px;
-
-border:
-    1px solid
-    var(--cinza-borda);
-
-border-radius:
-    9px;
-
-background:
-    white;
-
-color:
-    var(--verde);
-
-font-family:
-    inherit;
-
-font-size:
-    8px;
-
-font-weight:
-    800;
-
-cursor:
-    pointer;
-
-transition:
-    background .15s ease,
-    border-color .15s ease,
-    transform .15s ease;
-```
+    };
 
 }
 
-.history-button:hover {
 
-```
-background:
-    var(--verde-claro);
+const statusAnterior =
+    normalizarStatus(
+        dadosPostos[codigo].status
+    );
 
-border-color:
-    #c9dfd1;
+const novoStatus =
+    normalizarStatus(
+        resultado.status
+    );
 
-transform:
-    translateX(1px);
-```
+const evento =
+    resultado.evento ||
+    resultado.mensagem ||
+    dadosPostos[codigo].evento ||
+    "Status atualizado";
+
+const timestamp =
+    Number(
+        resultado.timestamp
+    ) ||
+    Date.now();
+
+const dataHora =
+    resultado.dataHora ||
+    formatarDataHora(
+        timestamp
+    );
+
+
+dadosPostos[codigo] = {
+
+    ...dadosPostos[codigo],
+
+    codigo:
+        codigo,
+
+    nome:
+        posto.nome,
+
+    status:
+        novoStatus,
+
+    evento:
+        evento,
+
+    dataHora:
+        dataHora,
+
+    timestamp:
+        timestamp
+
+};
+
+
+/*
+   Registra no histórico quando:
+   1. o status mudou
+   OU
+   2. o evento recebido é diferente
+      do último evento registrado.
+*/
+
+if (registrar) {
+
+    const lista =
+        historicos[codigo] ||
+        [];
+
+    const ultimo =
+        lista.length
+            ? lista[0]
+            : null;
+
+    const eventoMudou =
+        !ultimo ||
+        ultimo.evento !==
+            evento ||
+        ultimo.status !==
+            novoStatus ||
+        Number(
+            ultimo.timestamp
+        ) !==
+            timestamp;
+
+    if (
+        eventoMudou ||
+        statusAnterior !==
+            novoStatus
+    ) {
+
+        registrarHistorico(
+
+            codigo,
+
+            evento,
+
+            novoStatus,
+
+            dataHora,
+
+            timestamp
+
+        );
+
+    }
 
 }
 
-.history-button span {
 
-```
-font-size:
-    12px;
+atualizarCard(
+    codigo
+);
 
-line-height:
-    1;
-```
+atualizarResumo();
+
+salvarStorage();
+
+return true;
+ 
 
 }
 
 /* =========================================================
-LEGENDA
+REGISTRAR HISTÓRICO
 ========================================================= */
 
-.legend {
+function registrarHistorico(
+codigo,
+evento,
+status,
+dataHora,
+timestamp
+) {
 
-```
-display:
-    flex;
+ 
+if (!historicos[codigo]) {
 
-align-items:
-    center;
-
-justify-content:
-    space-between;
-
-gap:
-    20px;
-
-margin-top:
-    20px;
-
-padding:
-    14px 18px;
-
-background:
-    rgba(255, 255, 255, .78);
-
-border:
-    1px solid
-    var(--cinza-borda);
-
-border-radius:
-    16px;
-```
+    historicos[codigo] =
+        [];
 
 }
 
-.legend-title {
+const posto =
+    POSTOS.find(
+        item =>
+            item.codigo ===
+            codigo
+    );
 
-```
-color:
-    var(--cinza-claro);
+const registro = {
 
-font-size:
-    8px;
+    codigo:
+        codigo,
 
-font-weight:
-    800;
+    posto:
+        posto
+            ? posto.nome
+            : codigo,
 
-letter-spacing:
-    1px;
-```
+    evento:
+        evento,
 
-}
+    status:
+        status,
 
-.legend-items {
+    dataHora:
+        dataHora,
 
-```
-display:
-    flex;
+    timestamp:
+        timestamp
 
-align-items:
-    center;
+};
 
-flex-wrap:
-    wrap;
 
-gap:
-    15px;
-```
+/*
+   Evita duplicar exatamente
+   o mesmo evento.
+*/
 
-}
+const ultimo =
+    historicos[codigo][0];
 
-.legend-item {
+if (
+    ultimo &&
+    ultimo.evento ===
+        registro.evento &&
+    ultimo.status ===
+        registro.status &&
+    Number(
+        ultimo.timestamp
+    ) ===
+        Number(
+            registro.timestamp
+        )
+) {
 
-```
-display:
-    inline-flex;
-
-align-items:
-    center;
-
-gap:
-    6px;
-
-color:
-    var(--cinza-texto);
-
-font-size:
-    9px;
-```
-
-}
-
-.legend-dot {
-
-```
-width:
-    7px;
-
-height:
-    7px;
-
-border-radius:
-    50%;
-```
+    return;
 
 }
 
-.legend-online {
 
-```
-background:
-    var(--verde);
-```
+historicos[codigo].unshift(
+    registro
+);
 
-}
+historicos[codigo] =
+    historicos[codigo].slice(
+        0,
+        CONFIG.LIMITE_HISTORICO
+    );
 
-.legend-paused {
-
-```
-background:
-    var(--vermelho);
-```
-
-}
-
-.legend-checking {
-
-```
-background:
-    var(--amarelo);
-```
-
-}
-
-.legend-offline {
-
-```
-background:
-    #555d58;
-```
+salvarStorage();
+ 
 
 }
 
 /* =========================================================
-RODAPÉ
+INTERPRETAR RESPOSTA DA API
 ========================================================= */
 
-.footer {
+function processarRespostaAPI(
+resultado,
+codigoSolicitado = ""
+) {
 
-```
-display:
-    flex;
+ 
+if (!resultado) {
 
-align-items:
-    center;
-
-justify-content:
-    center;
-
-flex-wrap:
-    wrap;
-
-gap:
-    6px;
-
-padding:
-    25px 5px 5px;
-
-color:
-    var(--cinza-claro);
-
-font-size:
-    9px;
-
-text-align:
-    center;
-```
+    return false;
 
 }
 
-.footer strong {
 
-```
-color:
-    var(--verde);
-```
+let processado =
+    false;
+
+
+/*
+   Resposta com vários postos.
+*/
+
+if (
+    Array.isArray(
+        resultado.postos
+    )
+) {
+
+    resultado.postos.forEach(
+        dados => {
+
+            if (
+                dados &&
+                dados.codigo
+            ) {
+
+                if (
+                    aplicarResultadoPosto(
+                        dados.codigo,
+                        dados,
+                        true
+                    )
+                ) {
+
+                    processado =
+                        true;
+
+                }
+
+            }
+
+        }
+    );
+
+    return processado;
+
+}
+
+
+/*
+   Resposta de um único posto.
+*/
+
+const codigo =
+    resultado.codigo ||
+    codigoSolicitado;
+
+
+if (codigo) {
+
+    processado =
+        aplicarResultadoPosto(
+            codigo,
+            resultado,
+            true
+        );
+
+}
+
+
+return processado;
+ 
 
 }
 
 /* =========================================================
-MODAL
+ATUALIZAR UM POSTO
 ========================================================= */
 
-.modal {
+async function atualizarPosto(
+codigo
+) {
 
-```
-position:
-    fixed;
+ 
+const posto =
+    POSTOS.find(
+        item =>
+            item.codigo ===
+            codigo
+    );
 
-inset:
-    0;
+if (!posto) {
 
-z-index:
-    1000;
-
-display:
-    none;
-
-align-items:
-    center;
-
-justify-content:
-    center;
-
-padding:
-    20px;
-```
+    return;
 
 }
 
-.modal.active {
 
-```
-display:
-    flex;
-```
+const botao =
+    document.querySelector(
+        `[data-action="atualizar"][data-posto="${codigo}"]`
+    );
 
-}
 
-.modal-overlay {
+if (botao) {
 
-```
-position:
-    absolute;
+    botao.disabled =
+        true;
 
-inset:
-    0;
-
-background:
-    rgba(15, 27, 20, .55);
-
-backdrop-filter:
-    blur(4px);
-```
+    botao.classList.add(
+        "loading"
+    );
 
 }
 
-.modal-content {
 
-```
-position:
-    relative;
+try {
 
-z-index:
-    1;
+    mostrarStatusMensagem(
+        "Consultando " +
+        posto.nome +
+        "..."
+    );
 
-width:
-    100%;
 
-max-width:
-    720px;
+    const resultado =
+        await consultarAPI(
+            codigo
+        );
 
-max-height:
-    calc(100vh - 40px);
 
-display:
-    flex;
+    const sucesso =
+        processarRespostaAPI(
+            resultado,
+            codigo
+        );
 
-flex-direction:
-    column;
 
-overflow:
-    hidden;
+    if (!sucesso) {
 
-background:
-    white;
+        throw new Error(
+            "Resposta da API sem dados válidos."
+        );
 
-border-radius:
-    22px;
+    }
 
-box-shadow:
-    0 25px 70px
-    rgba(0, 0, 0, .20);
 
-animation:
-    modalEntrada .2s ease;
-```
+    ultimaAtualizacao =
+        Date.now();
 
-}
+    salvarStorage();
 
-@keyframes modalEntrada {
+    atualizarUltimaAtualizacao();
 
-```
-from {
+    atualizarStatusSistema(
+        true
+    );
 
-    opacity:
-        0;
 
-    transform:
-        translateY(10px)
-        scale(.98);
+    mostrarStatusMensagem(
+        posto.nome +
+        " atualizado com sucesso."
+    );
 
 }
 
-to {
+catch (erro) {
 
-    opacity:
-        1;
+    console.error(
+        "Erro ao atualizar " +
+        codigo +
+        ":",
+        erro
+    );
 
-    transform:
-        translateY(0)
-        scale(1);
+    atualizarStatusSistema(
+        false
+    );
 
-}
-```
-
-}
-
-.modal-header {
-
-```
-display:
-    flex;
-
-align-items:
-    center;
-
-justify-content:
-    space-between;
-
-gap:
-    15px;
-
-padding:
-    20px 22px;
-
-border-bottom:
-    1px solid
-    var(--cinza-linha);
-```
+    mostrarStatusMensagem(
+        "Não foi possível atualizar " +
+        posto.nome +
+        "."
+    );
 
 }
 
-.modal-kicker {
+finally {
 
-```
-margin-bottom:
-    4px;
+    if (botao) {
 
-color:
-    var(--verde);
+        botao.disabled =
+            false;
 
-font-size:
-    8px;
+        botao.classList.remove(
+            "loading"
+        );
 
-font-weight:
-    800;
-
-letter-spacing:
-    1px;
-```
+    }
 
 }
-
-.modal-header h2 {
-
-```
-font-size:
-    18px;
-
-font-weight:
-    800;
-```
-
-}
-
-.modal-close {
-
-```
-width:
-    35px;
-
-height:
-    35px;
-
-flex-shrink:
-    0;
-
-display:
-    flex;
-
-align-items:
-    center;
-
-justify-content:
-    center;
-
-border:
-    0;
-
-border-radius:
-    10px;
-
-background:
-    #f1f4f2;
-
-color:
-    #59635e;
-
-font-family:
-    inherit;
-
-font-size:
-    23px;
-
-line-height:
-    1;
-
-cursor:
-    pointer;
-
-transition:
-    background .15s ease,
-    color .15s ease;
-```
-
-}
-
-.modal-close:hover {
-
-```
-background:
-    #e8eeea;
-
-color:
-    var(--vermelho);
-```
-
-}
-
-.modal-status {
-
-```
-padding:
-    12px 22px;
-
-color:
-    var(--cinza-claro);
-
-background:
-    #fafcfb;
-
-border-bottom:
-    1px solid
-    var(--cinza-linha);
-
-font-size:
-    9px;
-```
-
-}
-
-.modal-history-list {
-
-```
-flex:
-    1;
-
-overflow-y:
-    auto;
-```
-
-}
-
-.modal-history-item {
-
-```
-display:
-    grid;
-
-grid-template-columns:
-    125px 1fr 95px;
-
-gap:
-    14px;
-
-align-items:
-    center;
-
-padding:
-    13px 22px;
-
-border-bottom:
-    1px solid
-    #f0f2f1;
-```
-
-}
-
-.modal-history-item:last-child {
-
-```
-border-bottom:
-    0;
-```
-
-}
-
-.modal-history-event {
-
-```
-color:
-    #4b5563;
-
-font-size:
-    9px;
-
-line-height:
-    1.4;
-```
-
-}
-
-.modal-history-status {
-
-```
-display:
-    inline-flex;
-
-align-items:
-    center;
-
-gap:
-    5px;
-
-font-size:
-    8px;
-
-font-weight:
-    800;
-
-text-transform:
-    uppercase;
-```
-
-}
-
-.modal-history-time {
-
-```
-color:
-    var(--cinza-claro);
-
-font-size:
-    8px;
-
-text-align:
-    right;
-
-font-variant-numeric:
-    tabular-nums;
-```
-
-}
-
-.history-empty {
-
-```
-padding:
-    45px 20px;
-
-color:
-    var(--cinza-claro);
-
-font-size:
-    10px;
-
-text-align:
-    center;
-```
-
-}
-
-.modal-footer {
-
-```
-display:
-    flex;
-
-justify-content:
-    flex-end;
-
-padding:
-    14px 22px;
-
-border-top:
-    1px solid
-    var(--cinza-linha);
-```
-
-}
-
-.modal-button {
-
-```
-min-height:
-    36px;
-
-padding:
-    0 15px;
-
-border:
-    0;
-
-border-radius:
-    9px;
-
-background:
-    var(--verde);
-
-color:
-    white;
-
-font-family:
-    inherit;
-
-font-size:
-    9px;
-
-font-weight:
-    800;
-
-cursor:
-    pointer;
-```
+ 
 
 }
 
 /* =========================================================
-TOAST
+ATUALIZAR TODOS
 ========================================================= */
 
-.toast {
+async function atualizarTodos() {
 
-```
-position:
-    fixed;
+ 
+if (atualizando) {
 
-right:
-    25px;
-
-bottom:
-    25px;
-
-z-index:
-    2000;
-
-max-width:
-    350px;
-
-display:
-    none;
-
-align-items:
-    center;
-
-gap:
-    11px;
-
-padding:
-    13px 15px;
-
-background:
-    white;
-
-border:
-    1px solid
-    var(--cinza-borda);
-
-border-radius:
-    13px;
-
-box-shadow:
-    0 12px 35px
-    rgba(0, 0, 0, .13);
-
-animation:
-    toastEntrada .2s ease;
-```
+    return;
 
 }
 
-.toast.active {
+atualizando =
+    true;
 
-```
-display:
-    flex;
-```
 
-}
+const botao =
+    elemento(
+        "btnAtualizarTodos"
+    );
 
-@keyframes toastEntrada {
 
-```
-from {
+if (botao) {
 
-    opacity:
-        0;
+    botao.disabled =
+        true;
 
-    transform:
-        translateY(10px);
-
-}
-
-to {
-
-    opacity:
-        1;
-
-    transform:
-        translateY(0);
-
-}
-```
+    botao.classList.add(
+        "loading"
+    );
 
 }
 
-.toast-icon {
 
-```
-width:
-    30px;
+mostrarStatusMensagem(
+    "Atualizando status dos 6 postos..."
+);
 
-height:
-    30px;
 
-flex-shrink:
-    0;
+try {
 
-display:
-    flex;
+    const resultado =
+        await consultarAPI();
 
-align-items:
-    center;
 
-justify-content:
-    center;
+    const sucesso =
+        processarRespostaAPI(
+            resultado
+        );
 
-border-radius:
-    9px;
 
-background:
-    var(--verde-claro);
+    if (!sucesso) {
 
-color:
-    var(--verde);
+        throw new Error(
+            "A API não retornou dados válidos."
+        );
 
-font-size:
-    14px;
+    }
 
-font-weight:
-    800;
-```
 
-}
+    ultimaAtualizacao =
+        Date.now();
 
-.toast-title {
 
-```
-color:
-    var(--texto);
+    salvarStorage();
 
-font-size:
-    10px;
+    atualizarCards();
 
-font-weight:
-    800;
-```
+    atualizarResumo();
+
+    atualizarUltimaAtualizacao();
+
+    atualizarStatusSistema(
+        true
+    );
+
+
+    mostrarStatusMensagem(
+        "Status dos 6 postos atualizado com sucesso."
+    );
 
 }
 
-.toast-message {
+catch (erro) {
 
-```
-margin-top:
-    3px;
+    console.error(
+        "Erro na atualização:",
+        erro
+    );
 
-color:
-    var(--cinza-texto);
+    atualizarStatusSistema(
+        false
+    );
 
-font-size:
-    9px;
 
-line-height:
-    1.35;
-```
+    mostrarStatusMensagem(
+        "Não foi possível consultar o servidor."
+    );
+
+}
+
+finally {
+
+    atualizando =
+        false;
+
+
+    if (botao) {
+
+        botao.disabled =
+            false;
+
+        botao.classList.remove(
+            "loading"
+        );
+
+    }
+
+}
+ 
 
 }
 
 /* =========================================================
-ESTADOS VISUAIS DO CARD
+STATUS MESSAGE
 ========================================================= */
 
-.station-card.is-online {
+function mostrarStatusMensagem(
+mensagem
+) {
 
-```
-border-color:
-    #d3e8da;
-```
+ 
+/*
+   Seu HTML atual não possui
+   um elemento específico para toast.
+   Portanto, usamos console e
+   o indicador do sistema sem
+   criar nova estrutura.
+*/
 
-}
-
-.station-card.is-paused {
-
-```
-border-color:
-    #efd3d3;
-```
-
-}
-
-.station-card.is-offline {
-
-```
-border-color:
-    #dfe3e1;
-```
-
-}
-
-.station-card.is-checking {
-
-```
-border-color:
-    #eee1ad;
-```
+console.log(
+    "[MONITORAMENTO]",
+    mensagem
+);
+ 
 
 }
 
 /* =========================================================
-SCROLLBAR
+HISTÓRICO
 ========================================================= */
 
-::-webkit-scrollbar {
+function abrirHistorico(
+codigo
+) {
 
-```
-width:
-    7px;
+ 
+const posto =
+    POSTOS.find(
+        item =>
+            item.codigo ===
+            codigo
+    );
 
-height:
-    7px;
-```
+if (!posto) {
 
-}
-
-::-webkit-scrollbar-track {
-
-```
-background:
-    #f2f5f3;
-```
+    return;
 
 }
 
-::-webkit-scrollbar-thumb {
 
-```
-background:
-    #c8d1cc;
+const modal =
+    elemento(
+        "historyModal"
+    );
 
-border-radius:
-    10px;
-```
+const titulo =
+    elemento(
+        "modalStationName"
+    );
+
+const listaElemento =
+    elemento(
+        "historyList"
+    );
+
+
+if (!modal) {
+
+    return;
 
 }
 
-::-webkit-scrollbar-thumb:hover {
 
-```
-background:
-    #aebbb3;
-```
+if (titulo) {
+
+    titulo.textContent =
+        "Histórico — " +
+        posto.nome;
+
+}
+
+
+if (listaElemento) {
+
+    const lista =
+        historicos[codigo] ||
+        [];
+
+
+    if (!lista.length) {
+
+        listaElemento.innerHTML = `
+
+            <div class="history-empty">
+
+                Nenhum evento registrado.
+
+            </div>
+
+        `;
+
+    }
+
+    else {
+
+        listaElemento.innerHTML =
+
+            lista
+            .map(item => `
+
+                <div
+                    class="modal-history-item"
+                >
+
+                    <div
+                        class="modal-history-status"
+                    >
+
+                        ${iconeStatus(
+                            item.status
+                        )}
+
+                        ${textoStatus(
+                            item.status
+                        )}
+
+                    </div>
+
+
+                    <div
+                        class="modal-history-event"
+                    >
+
+                        ${escapeHTML(
+                            item.evento
+                        )}
+
+                    </div>
+
+
+                    <div
+                        class="modal-history-time"
+                    >
+
+                        ${escapeHTML(
+                            item.dataHora
+                        )}
+
+                    </div>
+
+                </div>
+
+            `)
+            .join("");
+
+    }
+
+}
+
+
+modal.classList.add(
+    "active"
+);
+
+modal.setAttribute(
+    "aria-hidden",
+    "false"
+);
+ 
 
 }
 
 /* =========================================================
-SELEÇÃO
+FECHAR HISTÓRICO
 ========================================================= */
 
-::selection {
+function fecharHistorico() {
 
-```
-background:
-    rgba(14, 104, 53, .15);
+ 
+const modal =
+    elemento(
+        "historyModal"
+    );
 
-color:
-    var(--texto);
-```
+if (!modal) {
+
+    return;
+
+}
+
+modal.classList.remove(
+    "active"
+);
+
+modal.setAttribute(
+    "aria-hidden",
+    "true"
+);
+ 
 
 }
 
 /* =========================================================
-RESPONSIVO
+CONFIGURAR MODAL
 ========================================================= */
 
-@media (max-width: 1100px) {
+function configurarModal() {
 
-```
-body {
+ 
+const fechar =
+    elemento(
+        "btnFecharHistorico"
+    );
 
-    padding:
-        18px;
+if (fechar) {
 
-}
-
-
-.stations-grid {
-
-    grid-template-columns:
-        repeat(2, 1fr);
-
-}
-
-
-.summary-grid {
-
-    grid-template-columns:
-        repeat(2, 1fr);
-
-}
-```
-
-}
-
-@media (max-width: 700px) {
-
-```
-body {
-
-    padding:
-        10px;
+    fechar.addEventListener(
+        "click",
+        fecharHistorico
+    );
 
 }
 
 
-.header {
+const overlay =
+    document.querySelector(
+        "#historyModal .modal-overlay"
+    );
 
-    flex-direction:
-        column;
+if (overlay) {
 
-    align-items:
-        flex-start;
-
-    padding:
-        22px;
-
-    border-radius:
-        20px;
+    overlay.addEventListener(
+        "click",
+        fecharHistorico
+    );
 
 }
 
 
-.header-right {
+document.addEventListener(
+    "keydown",
+    evento => {
 
-    width:
-        100%;
+        if (
+            evento.key ===
+            "Escape"
+        ) {
 
-}
+            fecharHistorico();
 
+        }
 
-.clock-area {
-
-    text-align:
-        left;
-
-}
-
-
-.control-bar {
-
-    flex-direction:
-        column;
-
-    align-items:
-        stretch;
-
-}
-
-
-.control-info {
-
-    align-items:
-        flex-start;
-
-    flex-direction:
-        column;
-
-    gap:
-        7px;
-
-}
-
-
-.refresh-button {
-
-    width:
-        100%;
-
-}
-
-
-.section-heading {
-
-    align-items:
-        flex-start;
-
-    flex-direction:
-        column;
-
-}
-
-
-.auto-refresh {
-
-    align-self:
-        flex-start;
-
-}
-
-
-.stations-grid {
-
-    grid-template-columns:
-        1fr;
-
-}
-
-
-.legend {
-
-    align-items:
-        flex-start;
-
-    flex-direction:
-        column;
-
-}
-
-
-.modal-history-item {
-
-    grid-template-columns:
-        1fr;
-
-    gap:
-        6px;
-
-}
-
-
-.modal-history-time {
-
-    text-align:
-        left;
-
-}
-
-
-.toast {
-
-    right:
-        10px;
-
-    bottom:
-        10px;
-
-    left:
-        10px;
-
-    max-width:
-        none;
-
-}
-```
-
-}
-
-@media (max-width: 450px) {
-
-```
-.summary-grid {
-
-    grid-template-columns:
-        1fr;
-
-}
-
-
-.summary-card {
-
-    min-height:
-        85px;
-
-}
-
-
-.header h1 {
-
-    font-size:
-        22px;
-
-}
-
-
-.brand-icon {
-
-    width:
-        52px;
-
-    height:
-        52px;
-
-    font-size:
-        24px;
-
-}
-
-
-.station-card-header {
-
-    flex-direction:
-        column;
-
-}
-
-
-.station-status {
-
-    align-self:
-        flex-start;
-
-}
-
-
-.station-main {
-
-    grid-template-columns:
-        1fr;
-
-    gap:
-        12px;
-
-}
-```
+    }
+);
+ 
 
 }
 
 /* =========================================================
-ACESSIBILIDADE
+CONFIGURAR BOTÕES DOS POSTOS
 ========================================================= */
 
-button:focus-visible {
+function configurarBotoesPostos() {
 
-```
-outline:
-    3px solid
-    rgba(14, 104, 53, .25);
+ 
+const botoes =
+    document.querySelectorAll(
+        "[data-action]"
+    );
 
-outline-offset:
-    2px;
-```
+
+botoes.forEach(botao => {
+
+    botao.addEventListener(
+        "click",
+        function () {
+
+            const acao =
+                this.dataset.action;
+
+            const codigo =
+                this.dataset.posto;
+
+
+            if (
+                acao ===
+                "historico"
+            ) {
+
+                abrirHistorico(
+                    codigo
+                );
+
+            }
+
+
+            if (
+                acao ===
+                "atualizar"
+            ) {
+
+                atualizarPosto(
+                    codigo
+                );
+
+            }
+
+        }
+    );
+
+});
+ 
 
 }
 
-@media (prefers-reduced-motion: reduce) {
+/* =========================================================
+BOTÃO ATUALIZAR TODOS
+========================================================= */
 
-```
-*,
-*::before,
-*::after {
+function configurarBotaoAtualizar() {
 
-    scroll-behavior:
-        auto !important;
+ 
+const botao =
+    elemento(
+        "btnAtualizarTodos"
+    );
 
-    animation-duration:
-        .01ms !important;
+if (!botao) {
 
-    animation-iteration-count:
-        1 !important;
+    console.warn(
+        "Botão #btnAtualizarTodos não encontrado."
+    );
 
-    transition-duration:
-        .01ms !important;
-
-}
-```
+    return;
 
 }
+
+
+botao.addEventListener(
+    "click",
+    atualizarTodos
+);
+ 
+
+}
+
+/* =========================================================
+AUTO ATUALIZAÇÃO
+========================================================= */
+
+function iniciarAtualizacaoAutomatica() {
+
+ 
+setInterval(
+    () => {
+
+        console.log(
+            "Atualização automática iniciada."
+        );
+
+        atualizarTodos();
+
+    },
+    CONFIG.INTERVALO_ATUALIZACAO
+);
+ 
+
+}
+
+/* =========================================================
+VERIFICAR CONEXÃO INICIAL
+========================================================= */
+
+function inicializarInterface() {
+
+ 
+atualizarCards();
+
+atualizarResumo();
+
+atualizarUltimaAtualizacao();
+
+atualizarStatusSistema(
+    false
+);
+ 
+
+}
+
+/* =========================================================
+INICIALIZAÇÃO
+========================================================= */
+
+function iniciarPainel() {
+
+ 
+console.log(
+    "======================================"
+);
+
+console.log(
+    "MONITORAMENTO DE RÁDIO"
+);
+
+console.log(
+    "POSTOS GRACIOSA"
+);
+
+console.log(
+    "======================================"
+);
+
+
+carregarStorage();
+
+criarEstadoInicial();
+
+salvarStorage();
+
+inicializarInterface();
+
+atualizarRelogio();
+
+setInterval(
+    atualizarRelogio,
+    1000
+);
+
+
+configurarBotoesPostos();
+
+configurarBotaoAtualizar();
+
+configurarModal();
+
+
+/*
+   Primeira consulta.
+*/
+
+setTimeout(
+    () => {
+
+        atualizarTodos();
+
+    },
+    500
+);
+
+
+iniciarAtualizacaoAutomatica();
+
+
+console.log(
+    "Painel iniciado com sucesso."
+);
+ 
+
+}
+
+/* =========================================================
+DOM READY
+========================================================= */
+
+if (
+document.readyState ===
+"loading"
+) {
+
+ 
+document.addEventListener(
+    "DOMContentLoaded",
+    iniciarPainel
+);
+ 
+
+}
+
+else {
+
+ 
+iniciarPainel();
+ 
+
+}
+
+/* =========================================================
+LOG FINAL
+========================================================= */
+
+console.log(
+"App.js carregado."
+);
