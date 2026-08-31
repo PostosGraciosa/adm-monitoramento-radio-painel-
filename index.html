@@ -1,1256 +1,190 @@
 <!DOCTYPE html>
-
 <html lang="pt-BR">
-
 <head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Monitoramento de Rádio | Postos Graciosa</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      min-height: 100vh;
+    }
+    .container { max-width: 1100px; margin: 0 auto; padding: 24px; }
+    .cabecalho { text-align: center; padding: 20px 0 10px; }
+    .empresa {
+      display: inline-block;
+      background: #f59e0b;
+      color: #0f172a;
+      font-weight: 800;
+      letter-spacing: 2px;
+      padding: 6px 16px;
+      border-radius: 999px;
+      font-size: 0.85rem;
+      margin-bottom: 12px;
+    }
+    .cabecalho h1 { font-size: 1.9rem; color: #ffffff; }
+    .descricao { color: #94a3b8; margin-top: 6px; font-size: 0.95rem; }
+    .relogio { margin-top: 12px; font-size: 1.6rem; font-weight: 700; color: #38bdf8; }
+    .relogio #date { font-size: 1rem; color: #94a3b8; margin-left: 10px; }
 
+    .resumo {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+      margin: 24px 0;
+    }
+    .resumo-card {
+      background: #1e293b;
+      border-radius: 12px;
+      padding: 18px;
+      text-align: center;
+      border: 1px solid #334155;
+    }
+    .resumo-card span { display: block; font-size: 2rem; font-weight: 800; color: #ffffff; }
+    .resumo-card label { font-size: 0.7rem; letter-spacing: 1px; color: #94a3b8; }
 
-<meta charset="UTF-8">
+    .barra-controle {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 12px 16px;
+    }
+    #lastUpdate { font-size: 0.85rem; color: #94a3b8; }
+    .btn {
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn:hover { background: #1d4ed8; }
 
-<meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
->
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 14px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 16px;
+      border-bottom: 1px solid #334155;
+    }
+    .card-header .icone { font-size: 1.5rem; }
+    .card-header .nome { font-weight: 700; color: #fff; font-size: 0.95rem; }
+    .card-header .codigo { color: #64748b; font-size: 0.75rem; }
+    .status-badge {
+      margin-left: auto;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+    .status-online { background: #052e16; color: #4ade80; }
+    .status-pausado { background: #451a03; color: #fbbf24; }
+    .status-offline { background: #450a0a; color: #f87171; }
+    .status-verificando { background: #0c4a6e; color: #38bdf8; }
 
-<meta
-    name="description"
-    content="Painel central de monitoramento da rádio - Postos Graciosa"
->
+    .card-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+    .card-body .linha { font-size: 0.82rem; color: #cbd5e1; }
+    .card-body .linha strong { color: #94a3b8; font-weight: 600; }
+    .card-body .evento {
+      background: #0f172a;
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 0.8rem;
+      color: #e2e8f0;
+      min-height: 36px;
+    }
 
-<meta
-    name="theme-color"
-    content="#0e6835"
->
+    .card-footer {
+      display: flex;
+      gap: 8px;
+      padding: 12px 16px;
+      border-top: 1px solid #334155;
+    }
+    .card-footer .btn { flex: 1; font-size: 0.8rem; padding: 8px; }
+    .btn-verde { background: #16a34a; }
+    .btn-verde:hover { background: #15803d; }
+    .btn-cinza { background: #475569; }
+    .btn-cinza:hover { background: #334155; }
 
-<title>Monitoramento de Rádio | Postos Graciosa</title>
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 16px;
+    }
+    .modal[hidden] { display: none; }
+    .modal-content {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 14px;
+      max-width: 520px;
+      width: 100%;
+      max-height: 80vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 16px;
+      border-bottom: 1px solid #334155;
+    }
+    .modal-header h2 { font-size: 1rem; color: #fff; }
+    .modal-header button {
+      background: #334155;
+      border: none;
+      color: #e2e8f0;
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    #historyList {
+      list-style: none;
+      overflow-y: auto;
+      padding: 12px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    #historyList li {
+      background: #0f172a;
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 0.8rem;
+    }
+    #historyList .h-status { font-weight: 700; }
 
-
-<!-- =========================================
-     FAVICON
-========================================== -->
-
-<link
-    rel="icon"
-    href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%230e6835'/%3E%3Ccircle cx='50' cy='50' r='8' fill='white'/%3E%3Cpath d='M30 30c-12 12-12 28 0 40M70 30c12 12 12 28 0 40' fill='none' stroke='white' stroke-width='7' stroke-linecap='round'/%3E%3C/svg%3E"
->
-
-
-<!-- =========================================
-     CSS
-========================================== -->
-
-<link
-    rel="stylesheet"
-    href="style.css"
->
-```
-
+    .rodape { text-align: center; color: #64748b; font-size: 0.8rem; padding: 10px 0; }
+  </style>
 </head>
-
-<body>
-
-```
-<!-- =========================================
-     CONTAINER PRINCIPAL
-========================================== -->
-
-<div class="container">
-
-
-    <!-- =====================================
-         CABEÇALHO
-    ====================================== -->
-
-    <header class="header">
-
-
-        <div class="header-left">
-
-
-            <div class="header-icon">
-                📻
-            </div>
-
-
-            <div class="header-info">
-
-                <div class="company-name">
-                    POSTOS GRACIOSA
-                </div>
-
-
-                <h1>
-                    Monitoramento de Rádio
-                </h1>
-
-
-                <p>
-                    Painel central de acompanhamento dos 6 postos
-                </p>
-
-            </div>
-
-        </div>
-
-
-        <div class="header-right">
-
-
-            <div class="clock-label">
-                HORÁRIO LOCAL
-            </div>
-
-
-            <div
-                id="clock"
-                class="clock"
-            >
-                --:--:--
-            </div>
-
-
-            <div
-                id="date"
-                class="date"
-            >
-                --/--/----
-            </div>
-
-        </div>
-
-
-    </header>
-
-
-/* =====================================================
-   CONFIGURAÇÃO
-===================================================== */
-
-const STREAM_URL =
-    "https://servidor33-2.brlogic.com:7200/live?source=7074";
-
-
-const CONFIG = {
-
-    email:
-        "administracao@postosgraciosa.com.br",
-
-    historicoStorage:
-        "monitor_radio_eventos_v3",
-
-    intervaloMonitoramento:
-        3000,
-
-    /*
-       URL DO GOOGLE APPS SCRIPT
-    */
-
-    endpointEmail:
-        "https://script.google.com/macros/s/AKfycbyTJwiUpuNO1a3-u5IGYL6V-sMPZweH4Ph-xT2KS8q9xt0nE0sCG4nnyH4ZrcdP9ZZK/exec",
-
-    /*
-       MESMA CHAVE CONFIGURADA NO Code.gs
-    */
-
-    chave:
-        "GRACIOSA_RADIO_2026"
-
-};
-
-    <!-- =====================================
-         RESUMO
-    ====================================== -->
-
-    <section class="summary">
-
-
-        <div class="summary-card">
-
-
-            <div class="summary-icon">
-                📡
-            </div>
-
-
-            <div>
-
-                <div class="summary-label">
-                    POSTOS MONITORADOS
-                </div>
-
-
-                <div
-                    id="totalPostos"
-                    class="summary-value"
-                >
-                    6
-                </div>
-
-            </div>
-
-
-        </div>
-
-
-
-        <div class="summary-card">
-
-
-            <div class="summary-icon online">
-                ●
-            </div>
-
-
-            <div>
-
-                <div class="summary-label">
-                    ATIVOS
-                </div>
-
-
-                <div
-                    id="totalAtivos"
-                    class="summary-value"
-                >
-                    0
-                </div>
-
-            </div>
-
-
-        </div>
-
-
-
-        <div class="summary-card">
-
-
-            <div class="summary-icon paused">
-                ●
-            </div>
-
-
-            <div>
-
-                <div class="summary-label">
-                    PAUSADOS
-                </div>
-
-
-                <div
-                    id="totalPausados"
-                    class="summary-value"
-                >
-                    0
-                </div>
-
-            </div>
-
-
-        </div>
-
-
-
-        <div class="summary-card">
-
-
-            <div class="summary-icon checking">
-                ●
-            </div>
-
-
-            <div>
-
-                <div class="summary-label">
-                    VERIFICANDO
-                </div>
-
-
-                <div
-                    id="totalVerificando"
-                    class="summary-value"
-                >
-                    6
-                </div>
-
-            </div>
-
-
-        </div>
-
-
-    </section>
-
-
-
-    <!-- =====================================
-         BARRA DE CONTROLE
-    ====================================== -->
-
-    <section class="control-bar">
-
-
-        <div class="control-info">
-
-            <div class="control-title">
-                Status dos postos
-            </div>
-
-
-            <div
-                id="lastUpdate"
-                class="control-subtitle"
-            >
-                Aguardando primeira atualização...
-            </div>
-
-        </div>
-
-
-        <button
-            id="btnAtualizarTodos"
-            class="btn-update"
-            type="button"
-        >
-
-            <span class="btn-update-icon">
-                ↻
-            </span>
-
-            ATUALIZAR STATUS
-
-        </button>
-
-
-    </section>
-
-
-
-    <!-- =====================================
-         GRID DOS 6 POSTOS
-    ====================================== -->
-
-    <main
-        id="stationsGrid"
-        class="stations-grid"
-    >
-
-
-        <!-- =================================
-             POSTO GRACIOSA
-        ================================== -->
-
-        <article
-            class="station-card"
-            data-posto="graciosa"
-        >
-
-
-            <div class="station-card-header">
-
-
-                <div class="station-title-area">
-
-
-                    <div class="station-icon">
-                        ⛽
-                    </div>
-
-
-                    <div>
-
-                        <h2>
-                            POSTO GRACIOSA
-                        </h2>
-
-
-                        <span class="station-code">
-                            GRACIOSA
-                        </span>
-
-                    </div>
-
-
-                </div>
-
-
-                <div
-                    id="status-graciosa"
-                    class="status status-checking"
-                >
-
-                    <span class="status-dot"></span>
-
-                    VERIFICANDO
-
-                </div>
-
-
-            </div>
-
-
-
-            <div class="station-content">
-
-
-                <div class="info-row">
-
-                    <span>
-                        Última atividade
-                    </span>
-
-                    <strong id="atividade-graciosa">
-                        Aguardando...
-                    </strong>
-
-                </div>
-
-
-                <div class="info-row">
-
-                    <span>
-                        Última atualização
-                    </span>
-
-                    <strong id="atualizacao-graciosa">
-                        Aguardando...
-                    </strong>
-
-                </div>
-
-
-                <div class="event-box">
-
-                    <div class="event-label">
-                        ÚLTIMO EVENTO
-                    </div>
-
-
-                    <div
-                        id="evento-graciosa"
-                        class="event-text"
-                    >
-                        Nenhum evento recebido.
-                    </div>
-
-                </div>
-
-
-            </div>
-
-
-
-            <div class="station-footer">
-
-
-                <button
-                    class="btn-station-update"
-                    data-action="atualizar"
-                    data-posto="graciosa"
-                    type="button"
-                >
-                    ↻ Atualizar
-                </button>
-
-
-                <button
-                    class="btn-history"
-                    data-action="historico"
-                    data-posto="graciosa"
-                    type="button"
-                >
-                    ☷ Histórico
-                </button>
-
-
-            </div>
-
-
-        </article>
-
-
-
-        <!-- =================================
-             POSTO FÁTIMA
-        ================================== -->
-
-        <article
-            class="station-card"
-            data-posto="fatima"
-        >
-
-
-            <div class="station-card-header">
-
-
-                <div class="station-title-area">
-
-
-                    <div class="station-icon">
-                        ⛽
-                    </div>
-
-
-                    <div>
-
-                        <h2>
-                            POSTO FÁTIMA
-                        </h2>
-
-
-                        <span class="station-code">
-                            FÁTIMA
-                        </span>
-
-                    </div>
-
-
-                </div>
-
-
-                <div
-                    id="status-fatima"
-                    class="status status-checking"
-                >
-
-                    <span class="status-dot"></span>
-
-                    VERIFICANDO
-
-                </div>
-
-
-            </div>
-
-
-
-            <div class="station-content">
-
-
-                <div class="info-row">
-
-                    <span>
-                        Última atividade
-                    </span>
-
-                    <strong id="atividade-fatima">
-                        Aguardando...
-                    </strong>
-
-                </div>
-
-
-                <div class="info-row">
-
-                    <span>
-                        Última atualização
-                    </span>
-
-                    <strong id="atualizacao-fatima">
-                        Aguardando...
-                    </strong>
-
-                </div>
-
-
-                <div class="event-box">
-
-                    <div class="event-label">
-                        ÚLTIMO EVENTO
-                    </div>
-
-
-                    <div
-                        id="evento-fatima"
-                        class="event-text"
-                    >
-                        Nenhum evento recebido.
-                    </div>
-
-                </div>
-
-
-            </div>
-
-
-
-            <div class="station-footer">
-
-
-                <button
-                    class="btn-station-update"
-                    data-action="atualizar"
-                    data-posto="fatima"
-                    type="button"
-                >
-                    ↻ Atualizar
-                </button>
-
-
-                <button
-                    class="btn-history"
-                    data-action="historico"
-                    data-posto="fatima"
-                    type="button"
-                >
-                    ☷ Histórico
-                </button>
-
-
-            </div>
-
-
-        </article>
-
-
-
-        <!-- =================================
-             POSTO JARIVA
-        ================================== -->
-
-        <article
-            class="station-card"
-            data-posto="jariva"
-        >
-
-
-            <div class="station-card-header">
-
-
-                <div class="station-title-area">
-
-
-                    <div class="station-icon">
-                        ⛽
-                    </div>
-
-
-                    <div>
-
-                        <h2>
-                            POSTO JARIVA
-                        </h2>
-
-
-                        <span class="station-code">
-                            JARIVA
-                        </span>
-
-                    </div>
-
-
-                </div>
-
-
-                <div
-                    id="status-jariva"
-                    class="status status-checking"
-                >
-
-                    <span class="status-dot"></span>
-
-                    VERIFICANDO
-
-                </div>
-
-
-            </div>
-
-
-
-            <div class="station-content">
-
-
-                <div class="info-row">
-
-                    <span>
-                        Última atividade
-                    </span>
-
-                    <strong id="atividade-jariva">
-                        Aguardando...
-                    </strong>
-
-                </div>
-
-
-                <div class="info-row">
-
-                    <span>
-                        Última atualização
-                    </span>
-
-                    <strong id="atualizacao-jariva">
-                        Aguardando...
-                    </strong>
-
-                </div>
-
-
-                <div class="event-box">
-
-                    <div class="event-label">
-                        ÚLTIMO EVENTO
-                    </div>
-
-
-                    <div
-                        id="evento-jariva"
-                        class="event-text"
-                    >
-                        Nenhum evento recebido.
-                    </div>
-
-                </div>
-
-
-            </div>
-
-
-
-            <div class="station-footer">
-
-
-                <button
-                    class="btn-station-update"
-                    data-action="atualizar"
-                    data-posto="jariva"
-                    type="button"
-                >
-                    ↻ Atualizar
-                </button>
-
-
-                <button
-                    class="btn-history"
-                    data-action="historico"
-                    data-posto="jariva"
-                    type="button"
-                >
-                    ☷ Histórico
-                </button>
-
-
-            </div>
-
-
-        </article>
-
-
-
-        <!-- =================================
-             POSTO BEMER
-        ================================== -->
-
-        <article
-            class="station-card"
-            data-posto="bemer"
-        >
-
-
-            <div class="station-card-header">
-
-
-                <div class="station-title-area">
-
-
-                    <div class="station-icon">
-                        ⛽
-                    </div>
-
-
-                    <div>
-
-                        <h2>
-                            POSTO BEMER
-                        </h2>
-
-
-                        <span class="station-code">
-                            BEMER
-                        </span>
-
-                    </div>
-
-
-                </div>
-
-
-                <div
-                    id="status-bemer"
-                    class="status status-checking"
-                >
-
-                    <span class="status-dot"></span>
-
-                    VERIFICANDO
-
-                </div>
-
-
-            </div>
-
-
-
-            <div class="station-content">
-
-
-                <div class="info-row">
-
-                    <span>
-                        Última atividade
-                    </span>
-
-                    <strong id="atividade-bemer">
-                        Aguardando...
-                    </strong>
-
-                </div>
-
-
-                <div class="info-row">
-
-                    <span>
-                        Última atualização
-                    </span>
-
-                    <strong id="atualizacao-bemer">
-                        Aguardando...
-                    </strong>
-
-                </div>
-
-
-                <div class="event-box">
-
-                    <div class="event-label">
-                        ÚLTIMO EVENTO
-                    </div>
-
-
-                    <div
-                        id="evento-bemer"
-                        class="event-text"
-                    >
-                        Nenhum evento recebido.
-                    </div>
-
-                </div>
-
-
-            </div>
-
-
-
-            <div class="station-footer">
-
-
-                <button
-                    class="btn-station-update"
-                    data-action="atualizar"
-                    data-posto="bemer"
-                    type="button"
-                >
-                    ↻ Atualizar
-                </button>
-
-
-                <button
-                    class="btn-history"
-                    data-action="historico"
-                    data-posto="bemer"
-                    type="button"
-                >
-                    ☷ Histórico
-                </button>
-
-
-            </div>
-
-
-        </article>
-
-
-
-        <!-- =================================
-             POSTO GRACIOSA V
-        ================================== -->
-
-        <article
-            class="station-card"
-            data-posto="graciosa-v"
-        >
-
-
-            <div class="station-card-header">
-
-
-                <div class="station-title-area">
-
-
-                    <div class="station-icon">
-                        ⛽
-                    </div>
-
-
-                    <div>
-
-                        <h2>
-                            POSTO GRACIOSA V
-                        </h2>
-
-
-                        <span class="station-code">
-                            GRACIOSA V
-                        </span>
-
-                    </div>
-
-
-                </div>
-
-
-                <div
-                    id="status-graciosa-v"
-                    class="status status-checking"
-                >
-
-                    <span class="status-dot"></span>
-
-                    VERIFICANDO
-
-                </div>
-
-
-            </div>
-
-
-
-            <div class="station-content">
-
-
-                <div class="info-row">
-
-                    <span>
-                        Última atividade
-                    </span>
-
-                    <strong id="atividade-graciosa-v">
-                        Aguardando...
-                    </strong>
-
-                </div>
-
-
-                <div class="info-row">
-
-                    <span>
-                        Última atualização
-                    </span>
-
-                    <strong id="atualizacao-graciosa-v">
-                        Aguardando...
-                    </strong>
-
-                </div>
-
-
-                <div class="event-box">
-
-                    <div class="event-label">
-                        ÚLTIMO EVENTO
-                    </div>
-
-
-                    <div
-                        id="evento-graciosa-v"
-                        class="event-text"
-                    >
-                        Nenhum evento recebido.
-                    </div>
-
-                </div>
-
-
-            </div>
-
-
-
-            <div class="station-footer">
-
-
-                <button
-                    class="btn-station-update"
-                    data-action="atualizar"
-                    data-posto="graciosa-v"
-                    type="button"
-                >
-                    ↻ Atualizar
-                </button>
-
-
-                <button
-                    class="btn-history"
-                    data-action="historico"
-                    data-posto="graciosa-v"
-                    type="button"
-                >
-                    ☷ Histórico
-                </button>
-
-
-            </div>
-
-
-        </article>
-
-
-
-        <!-- =================================
-             POSTO PIRAÍ
-        ================================== -->
-
-        <article
-            class="station-card"
-            data-posto="pirai"
-        >
-
-
-            <div class="station-card-header">
-
-
-                <div class="station-title-area">
-
-
-                    <div class="station-icon">
-                        ⛽
-                    </div>
-
-
-                    <div>
-
-                        <h2>
-                            POSTO PIRAÍ
-                        </h2>
-
-
-                        <span class="station-code">
-                            PIRAÍ
-                        </span>
-
-                    </div>
-
-
-                </div>
-
-
-                <div
-                    id="status-pirai"
-                    class="status status-checking"
-                >
-
-                    <span class="status-dot"></span>
-
-                    VERIFICANDO
-
-                </div>
-
-
-            </div>
-
-
-
-            <div class="station-content">
-
-
-                <div class="info-row">
-
-                    <span>
-                        Última atividade
-                    </span>
-
-                    <strong id="atividade-pirai">
-                        Aguardando...
-                    </strong>
-
-                </div>
-
-
-                <div class="info-row">
-
-                    <span>
-                        Última atualização
-                    </span>
-
-                    <strong id="atualizacao-pirai">
-                        Aguardando...
-                    </strong>
-
-                </div>
-
-
-                <div class="event-box">
-
-                    <div class="event-label">
-                        ÚLTIMO EVENTO
-                    </div>
-
-
-                    <div
-                        id="evento-pirai"
-                        class="event-text"
-                    >
-                        Nenhum evento recebido.
-                    </div>
-
-                </div>
-
-
-            </div>
-
-
-
-            <div class="station-footer">
-
-
-                <button
-                    class="btn-station-update"
-                    data-action="atualizar"
-                    data-posto="pirai"
-                    type="button"
-                >
-                    ↻ Atualizar
-                </button>
-
-
-                <button
-                    class="btn-history"
-                    data-action="historico"
-                    data-posto="pirai"
-                    type="button"
-                >
-                    ☷ Histórico
-                </button>
-
-
-            </div>
-
-
-        </article>
-
-
-    </main>
-
-
-
-    <!-- =====================================
-         MODAL HISTÓRICO
-    ====================================== -->
-
-    <div
-        id="historyModal"
-        class="modal"
-        aria-hidden="true"
-    >
-
-
-        <div class="modal-overlay"></div>
-
-
-        <div
-            class="modal-content"
-            role="dialog"
-            aria-modal="true"
-        >
-
-
-            <div class="modal-header">
-
-
-                <div>
-
-                    <div class="modal-label">
-                        HISTÓRICO
-                    </div>
-
-
-                    <h2 id="modalStationName">
-                        Histórico do posto
-                    </h2>
-
-                </div>
-
-
-                <button
-                    id="btnFecharHistorico"
-                    class="modal-close"
-                    type="button"
-                    aria-label="Fechar histórico"
-                >
-                    ×
-                </button>
-
-
-            </div>
-
-
-
-            <div
-                id="historyList"
-                class="history-list"
-            >
-
-                <div class="history-empty">
-                    Nenhum evento registrado.
-                </div>
-
-            </div>
-
-
-        </div>
-
-
-    </div>
-
-
-
-    <!-- =====================================
-         RODAPÉ
-    ====================================== -->
-
-    <footer class="footer">
-
-        <span>
-            Postos Graciosa
-        </span>
-
-        ·
-
-        Monitoramento de Rádio
-
-        <span
-            id="systemStatus"
-            class="system-status"
-        >
-            ● Sistema aguardando conexão
-        </span>
-
-    </footer>
-
-
-</div>
-
-
-
-<!-- =========================================
-     JAVASCRIPT
-========================================== -->
-
-<script
-    src="app.js"
-></script>
-
-
-</body>
-
-</html>
