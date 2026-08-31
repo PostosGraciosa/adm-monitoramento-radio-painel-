@@ -16,7 +16,7 @@ const CONFIG = {
     */
 
     API_URL:
-        "",
+        "https://script.google.com/macros/s/AKfycbyTJwiUpuNO1a3-u5IGYL6V-sMPZweH4Ph-xT2KS8q9xt0nE0sCG4nnyH4ZrcdP9ZZK/exec",
 
 
     /* TEMPO ENTRE ATUALIZAÇÕES AUTOMÁTICAS */
