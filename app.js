@@ -9,8 +9,10 @@
    - Detecta PLAY / PAUSE / OFFLINE
    - Envia eventos para o Google Apps Script
    - Funciona para os 6 postos
-   - Evita envio repetido do mesmo evento
+   - Evita envio repetido
    - Permite recuperação do rádio
+   - Recebe eventos via postMessage
+   - Mantém histórico local
    ========================================================= */
 
 
@@ -28,7 +30,22 @@ const INTERVALO_ATUALIZACAO =
   60000;
 
 const STORAGE =
-  "monitor_radio_graciosa_v2";
+  "monitor_radio_graciosa_v3";
+
+const STORAGE_ALERTAS =
+  "monitor_radio_alertas_v3";
+
+/*
+ * Tempo mínimo para repetir exatamente
+ * o mesmo evento do mesmo posto.
+ *
+ * Exemplo:
+ * PAUSE + BEMER enviado agora.
+ * Outro PAUSE + BEMER dentro de 2 minutos
+ * não gera outro e-mail.
+ */
+const INTERVALO_ANTI_DUPLICACAO =
+  2 * 60 * 1000;
 
 
 /* =========================================================
@@ -95,9 +112,7 @@ function obterPostoDaUrl() {
       .trim();
 
   if (!codigo) {
-
     return null;
-
   }
 
   return TODOS_POSTOS.find(
@@ -116,9 +131,11 @@ const POSTO_ATUAL =
 
 
 /*
- * Se tiver ?posto=, monitora somente aquele posto.
+ * Com ?posto=xxx:
+ * monitora somente aquele posto.
  *
- * Se não tiver, monitora todos.
+ * Sem ?posto=:
+ * mostra todos.
  */
 const POSTOS =
   POSTO_ATUAL
@@ -131,6 +148,13 @@ const POSTOS =
    ========================================================= */
 
 let estado = {};
+
+
+/* =========================================================
+   CONTROLE DE ALERTAS
+   ========================================================= */
+
+let controleAlertas = {};
 
 
 /* =========================================================
@@ -259,7 +283,7 @@ function criarEstadoInicial() {
 
 
 /* =========================================================
-   STORAGE
+   CARREGAR STORAGE
    ========================================================= */
 
 function carregarStorage() {
@@ -272,9 +296,7 @@ function carregarStorage() {
       );
 
     if (!salvo) {
-
       return false;
-
     }
 
     const dados =
@@ -284,9 +306,7 @@ function carregarStorage() {
       !dados ||
       typeof dados !== "object"
     ) {
-
       return false;
-
     }
 
     Object.keys(dados).forEach(
@@ -348,6 +368,78 @@ function salvarStorage() {
 
 
 /* =========================================================
+   CARREGAR CONTROLE DE ALERTAS
+   ========================================================= */
+
+function carregarControleAlertas() {
+
+  try {
+
+    const salvo =
+      localStorage.getItem(
+        STORAGE_ALERTAS
+      );
+
+    if (!salvo) {
+      controleAlertas = {};
+      return;
+    }
+
+    const dados =
+      JSON.parse(salvo);
+
+    if (
+      dados &&
+      typeof dados === "object"
+    ) {
+
+      controleAlertas =
+        dados;
+
+    }
+
+  } catch (erro) {
+
+    console.warn(
+      "Erro ao carregar controle de alertas:",
+      erro
+    );
+
+    controleAlertas = {};
+
+  }
+
+}
+
+
+/* =========================================================
+   SALVAR CONTROLE DE ALERTAS
+   ========================================================= */
+
+function salvarControleAlertas() {
+
+  try {
+
+    localStorage.setItem(
+      STORAGE_ALERTAS,
+      JSON.stringify(
+        controleAlertas
+      )
+    );
+
+  } catch (erro) {
+
+    console.warn(
+      "Erro ao salvar controle de alertas:",
+      erro
+    );
+
+  }
+
+}
+
+
+/* =========================================================
    RELÓGIO
    ========================================================= */
 
@@ -357,9 +449,7 @@ function atualizarRelogio() {
     !ELEMENTO.clock ||
     !ELEMENTO.date
   ) {
-
     return;
-
   }
 
   const agora =
@@ -380,10 +470,8 @@ function atualizarRelogio() {
       agora.getSeconds()
     ).padStart(2, "0");
 
-
   ELEMENTO.clock.textContent =
     hh + ":" + mm + ":" + ss;
-
 
   ELEMENTO.date.textContent =
     formatarDataHora(
@@ -394,7 +482,7 @@ function atualizarRelogio() {
 
 
 /* =========================================================
-   DATA / HORA
+   FORMATAR DATA / HORA
    ========================================================= */
 
 function formatarDataHora(data) {
@@ -404,40 +492,33 @@ function formatarDataHora(data) {
       ? data
       : new Date(data);
 
-
   const dd =
     String(
       d.getDate()
     ).padStart(2, "0");
-
 
   const mm =
     String(
       d.getMonth() + 1
     ).padStart(2, "0");
 
-
   const aaaa =
     d.getFullYear();
-
 
   const hh =
     String(
       d.getHours()
     ).padStart(2, "0");
 
-
   const mi =
     String(
       d.getMinutes()
     ).padStart(2, "0");
 
-
   const ss =
     String(
       d.getSeconds()
     ).padStart(2, "0");
-
 
   return (
     dd +
@@ -469,13 +550,15 @@ function normalizarStatus(status) {
       .toLowerCase()
       .trim();
 
-
   if (
     [
       "online",
       "ativo",
       "play",
       "playing",
+      "played",
+      "start",
+      "started",
       "1",
       "true"
     ].indexOf(valor) !== -1
@@ -484,7 +567,6 @@ function normalizarStatus(status) {
     return "online";
 
   }
-
 
   if (
     [
@@ -499,11 +581,13 @@ function normalizarStatus(status) {
 
   }
 
-
   if (
     [
       "offline",
       "off",
+      "error",
+      "failed",
+      "failure",
       "0",
       "false"
     ].indexOf(valor) !== -1
@@ -513,8 +597,95 @@ function normalizarStatus(status) {
 
   }
 
-
   return "verificando";
+
+}
+
+
+/* =========================================================
+   NORMALIZAR EVENTO
+   ========================================================= */
+
+function normalizarEvento(evento) {
+
+  const valor =
+    String(
+      evento || ""
+    )
+      .toLowerCase()
+      .trim();
+
+  if (
+    [
+      "play",
+      "playing",
+      "start",
+      "started",
+      "player_started",
+      "player iniciado",
+      "player iniciado / rádio restabelecida"
+    ].indexOf(valor) !== -1
+  ) {
+
+    return {
+      evento: "PLAYER INICIADO",
+      status: "online"
+    };
+
+  }
+
+  if (
+    [
+      "pause",
+      "paused",
+      "player_paused",
+      "player pausado"
+    ].indexOf(valor) !== -1
+  ) {
+
+    return {
+      evento: "PLAYER PAUSADO",
+      status: "pausado"
+    };
+
+  }
+
+  if (
+    [
+      "offline",
+      "off",
+      "radio_offline",
+      "rádio offline",
+      "radio offline"
+    ].indexOf(valor) !== -1
+  ) {
+
+    return {
+      evento: "RÁDIO OFFLINE",
+      status: "offline"
+    };
+
+  }
+
+  if (
+    [
+      "online",
+      "restabelecida",
+      "restabelecido",
+      "radio_online",
+      "rádio restabelecida",
+      "radio restabelecida"
+    ].indexOf(valor) !== -1
+  ) {
+
+    return {
+      evento: "RÁDIO RESTABELECIDA",
+      status: "online"
+    };
+
+  }
+
+  return null;
 
 }
 
@@ -540,7 +711,6 @@ function textoStatus(status) {
       "VERIFICANDO"
 
   };
-
 
   return (
     mapa[status] ||
@@ -580,7 +750,6 @@ function iconeStatus(status) {
       "🔵"
 
   };
-
 
   return (
     mapa[status] ||
@@ -639,11 +808,8 @@ function renderizarCards() {
   if (
     !ELEMENTO.gridPostos
   ) {
-
     return;
-
   }
-
 
   ELEMENTO.gridPostos.innerHTML =
     POSTOS.map(
@@ -687,7 +853,6 @@ function renderizarCards() {
 
             '</div>' +
 
-
             '<div class="card-body">' +
 
               '<div class="linha">' +
@@ -704,7 +869,6 @@ function renderizarCards() {
 
               '</div>' +
 
-
               '<div class="linha">' +
 
                 '<strong>Atualização:</strong> ' +
@@ -719,13 +883,11 @@ function renderizarCards() {
 
               '</div>' +
 
-
               '<div class="linha">' +
 
                 '<strong>Último evento:</strong>' +
 
               '</div>' +
-
 
               '<div class="evento" id="evento-' +
                 posto.codigo +
@@ -736,7 +898,6 @@ function renderizarCards() {
               '</div>' +
 
             '</div>' +
-
 
             '<div class="card-footer">' +
 
@@ -749,7 +910,6 @@ function renderizarCards() {
                 "Atualizar" +
 
               '</button>' +
-
 
               '<button ' +
                 'class="btn btn-cinza" ' +
@@ -782,13 +942,9 @@ function atualizarCard(posto) {
   const s =
     estado[posto.codigo];
 
-
   if (!s) {
-
     return;
-
   }
-
 
   const elStatus =
     document.getElementById(
@@ -796,13 +952,11 @@ function atualizarCard(posto) {
       posto.codigo
     );
 
-
   const elAtividade =
     document.getElementById(
       "atividade-" +
       posto.codigo
     );
-
 
   const elAtualizacao =
     document.getElementById(
@@ -810,13 +964,11 @@ function atualizarCard(posto) {
       posto.codigo
     );
 
-
   const elEvento =
     document.getElementById(
       "evento-" +
       posto.codigo
     );
-
 
   if (elStatus) {
 
@@ -829,7 +981,6 @@ function atualizarCard(posto) {
         s.status
       );
 
-
     elStatus.className =
       "status-badge " +
       classeStatus(
@@ -837,7 +988,6 @@ function atualizarCard(posto) {
       );
 
   }
-
 
   if (elAtividade) {
 
@@ -847,7 +997,6 @@ function atualizarCard(posto) {
 
   }
 
-
   if (elAtualizacao) {
 
     elAtualizacao.textContent =
@@ -855,7 +1004,6 @@ function atualizarCard(posto) {
       "—";
 
   }
-
 
   if (elEvento) {
 
@@ -869,7 +1017,7 @@ function atualizarCard(posto) {
 
 
 /* =========================================================
-   AVISO
+   AVISO VISUAL
    ========================================================= */
 
 function fazerAviso(posto) {
@@ -877,22 +1025,15 @@ function fazerAviso(posto) {
   if (
     !ELEMENTO.avisoPosto
   ) {
-
     return;
-
   }
-
 
   const s =
     estado[posto.codigo];
 
-
   if (!s) {
-
     return;
-
   }
-
 
   if (
     s.status === "offline"
@@ -902,7 +1043,6 @@ function fazerAviso(posto) {
       "🔴 ALERTA — " +
       posto.nome +
       " OFFLINE";
-
 
     ELEMENTO.avisoTexto.textContent =
       "O rádio deste posto está fora do ar. " +
@@ -915,16 +1055,13 @@ function fazerAviso(posto) {
       s.dataHora +
       ".";
 
-
     ELEMENTO.avisoPosto
       .classList
       .add("visivel");
 
-
     return;
 
   }
-
 
   if (
     s.status === "pausado"
@@ -934,7 +1071,6 @@ function fazerAviso(posto) {
       "🟡 ATENÇÃO — " +
       posto.nome +
       " PAUSADO";
-
 
     ELEMENTO.avisoTexto.textContent =
       "O rádio deste posto está pausado. " +
@@ -947,16 +1083,13 @@ function fazerAviso(posto) {
       s.dataHora +
       ".";
 
-
     ELEMENTO.avisoPosto
       .classList
       .add("visivel");
 
-
     return;
 
   }
-
 
   if (
     s.status === "online"
@@ -967,7 +1100,6 @@ function fazerAviso(posto) {
       posto.nome +
       " ATIVO";
 
-
     ELEMENTO.avisoTexto.textContent =
       "O rádio deste posto está funcionando normalmente. " +
       "Último evento: " +
@@ -977,26 +1109,21 @@ function fazerAviso(posto) {
       ) +
       ".";
 
-
     ELEMENTO.avisoPosto
       .classList
       .add("visivel");
 
-
     return;
 
   }
-
 
   ELEMENTO.avisoTitulo.textContent =
     "🔵 " +
     posto.nome +
     " — VERIFICANDO";
 
-
   ELEMENTO.avisoTexto.textContent =
     "Aguardando a primeira atualização do rádio deste posto.";
-
 
   ELEMENTO.avisoPosto
     .classList
@@ -1021,15 +1148,10 @@ function atualizarTodosOsCards() {
     }
   );
 
-
   atualizarResumo();
 
   salvarStorage();
 
-
-  /*
-   * AVISO DA PÁGINA
-   */
   if (
     POSTO_ATUAL
   ) {
@@ -1058,7 +1180,6 @@ function atualizarResumo() {
   let verificando =
     0;
 
-
   POSTOS.forEach(
     function (posto) {
 
@@ -1066,7 +1187,6 @@ function atualizarResumo() {
         estado[
           posto.codigo
         ].status;
-
 
       if (
         status === "online"
@@ -1089,7 +1209,6 @@ function atualizarResumo() {
     }
   );
 
-
   if (
     ELEMENTO.totalPostos
   ) {
@@ -1098,7 +1217,6 @@ function atualizarResumo() {
       POSTOS.length;
 
   }
-
 
   if (
     ELEMENTO.totalAtivos
@@ -1109,7 +1227,6 @@ function atualizarResumo() {
 
   }
 
-
   if (
     ELEMENTO.totalPausados
   ) {
@@ -1118,7 +1235,6 @@ function atualizarResumo() {
       pausados;
 
   }
-
 
   if (
     ELEMENTO.totalVerificando
@@ -1181,14 +1297,12 @@ function consultarApi() {
     "Consultando API..."
   );
 
-
   const url =
     API_URL +
     "?chave=" +
     encodeURIComponent(
       CHAVE
     );
-
 
   fetch(
     url,
@@ -1233,11 +1347,9 @@ function consultarApi() {
 
         }
 
-
         aplicarResultado(
           resposta
         );
-
 
         statusDoSistema(
           "Sistema online"
@@ -1253,7 +1365,6 @@ function consultarApi() {
           "Erro ao consultar API:",
           erro
         );
-
 
         statusDoSistema(
           "Falha ao consultar API."
@@ -1277,16 +1388,12 @@ function aplicarResultado(
     !resposta ||
     resposta.ok === false
   ) {
-
     return;
-
   }
-
 
   const dados =
     resposta.dados ||
     {};
-
 
   POSTOS.forEach(
     function (posto) {
@@ -1295,7 +1402,6 @@ function aplicarResultado(
         dados[
           posto.codigo
         ];
-
 
       if (item) {
 
@@ -1307,7 +1413,6 @@ function aplicarResultado(
 
     }
   );
-
 
   atualizarTodosOsCards();
 
@@ -1325,11 +1430,8 @@ function interpretarRespostaDaApi(
 ) {
 
   if (!item) {
-
     return;
-
   }
-
 
   const codigo =
     String(
@@ -1339,29 +1441,22 @@ function interpretarRespostaDaApi(
       .toLowerCase()
       .trim();
 
-
   if (!estado[codigo]) {
-
     return;
-
   }
-
 
   estado[codigo].status =
     normalizarStatus(
       item.status
     );
 
-
   estado[codigo].evento =
     item.evento ||
     estado[codigo].evento;
 
-
   estado[codigo].dataHora =
     item.dataHora ||
     estado[codigo].dataHora;
-
 
   if (
     item.timestamp
@@ -1374,7 +1469,6 @@ function interpretarRespostaDaApi(
 
   }
 
-
   if (
     item.idEvento
   ) {
@@ -1385,6 +1479,758 @@ function interpretarRespostaDaApi(
       );
 
   }
+
+}
+
+
+/* =========================================================
+   VERIFICAR DUPLICIDADE
+   ========================================================= */
+
+function podeEnviarAlerta(
+  posto,
+  evento,
+  status
+) {
+
+  const chave =
+    posto.codigo +
+    "|" +
+    evento +
+    "|" +
+    status;
+
+  const agora =
+    Date.now();
+
+  const ultimo =
+    Number(
+      controleAlertas[chave] ||
+      0
+    );
+
+  if (
+    ultimo > 0 &&
+    agora - ultimo <
+      INTERVALO_ANTI_DUPLICACAO
+  ) {
+
+    console.warn(
+      "⚠️ ALERTA IGNORADO POR DUPLICIDADE:",
+      chave
+    );
+
+    return false;
+
+  }
+
+  controleAlertas[chave] =
+    agora;
+
+  salvarControleAlertas();
+
+  return true;
+
+}
+
+
+/* =========================================================
+   ENVIAR ALERTA
+   ========================================================= */
+
+function enviarAlerta(
+  posto,
+  evento,
+  status
+) {
+
+  if (!posto) {
+
+    console.error(
+      "❌ Posto não informado."
+    );
+
+    return false;
+
+  }
+
+  evento =
+    String(
+      evento || "EVENTO"
+    ).trim();
+
+  status =
+    normalizarStatus(
+      status
+    );
+
+
+  /*
+   * Evita repetição.
+   */
+  if (
+    !podeEnviarAlerta(
+      posto,
+      evento,
+      status
+    )
+  ) {
+
+    return false;
+
+  }
+
+
+  /*
+   * ID ÚNICO.
+   */
+  const idEvento =
+    evento
+      .toUpperCase()
+      .replace(
+        /\s+/g,
+        "_"
+      ) +
+    "_" +
+    posto.codigo +
+    "_" +
+    Date.now();
+
+
+  /*
+   * URL FINAL.
+   */
+  const url =
+    API_URL +
+    "?chave=" +
+    encodeURIComponent(
+      CHAVE
+    ) +
+    "&codigo=" +
+    encodeURIComponent(
+      posto.codigo
+    ) +
+    "&posto=" +
+    encodeURIComponent(
+      posto.nome
+    ) +
+    "&evento=" +
+    encodeURIComponent(
+      evento
+    ) +
+    "&status=" +
+    encodeURIComponent(
+      status
+    ) +
+    "&idEvento=" +
+    encodeURIComponent(
+      idEvento
+    );
+
+
+  console.log(
+    "================================="
+  );
+
+  console.log(
+    "🚨 ENVIANDO ALERTA"
+  );
+
+  console.log(
+    "Posto:",
+    posto.nome
+  );
+
+  console.log(
+    "Código:",
+    posto.codigo
+  );
+
+  console.log(
+    "Evento:",
+    evento
+  );
+
+  console.log(
+    "Status:",
+    status
+  );
+
+  console.log(
+    "ID:",
+    idEvento
+  );
+
+  console.log(
+    "URL:",
+    url
+  );
+
+  console.log(
+    "================================="
+  );
+
+
+  /*
+   * IMPORTANTE:
+   *
+   * Não usamos somente fetch().
+   *
+   * O Apps Script pode redirecionar a requisição
+   * e o navegador pode bloquear a leitura da resposta
+   * por CORS.
+   *
+   * Uma imagem faz um GET simples sem precisar
+   * ler a resposta.
+   *
+   * O Code.gs recebe a requisição normalmente
+   * e executa MailApp.sendEmail().
+   */
+  try {
+
+    const img =
+      new Image();
+
+    img.onload =
+      function () {
+
+        console.log(
+          "✅ Requisição de alerta concluída:",
+          posto.nome
+        );
+
+      };
+
+    img.onerror =
+      function () {
+
+        /*
+         * Mesmo que o navegador informe erro
+         * por causa do redirecionamento do Apps Script,
+         * a requisição pode ter chegado ao servidor.
+         */
+        console.warn(
+          "⚠️ Navegador informou erro após enviar alerta:",
+          posto.nome
+        );
+
+      };
+
+    img.src =
+      url +
+      "&_t=" +
+      Date.now();
+
+  } catch (erro) {
+
+    console.error(
+      "❌ ERRO AO ENVIAR ALERTA:",
+      erro
+    );
+
+    return false;
+
+  }
+
+
+  console.log(
+    "📨 ALERTA PREPARADO PARA:",
+    posto.nome
+  );
+
+  return true;
+
+}
+
+
+/* =========================================================
+   REGISTRAR EVENTO LOCAL
+   ========================================================= */
+
+function registrarEvento(
+  posto,
+  evento,
+  status,
+  enviarEmail
+) {
+
+  if (!posto) {
+    return;
+  }
+
+  if (
+    !estado[posto.codigo]
+  ) {
+    return;
+  }
+
+
+  const novoStatus =
+    normalizarStatus(
+      status
+    );
+
+  const agora =
+    new Date();
+
+
+  estado[posto.codigo].status =
+    novoStatus;
+
+  estado[posto.codigo].evento =
+    evento;
+
+  estado[posto.codigo].dataHora =
+    formatarDataHora(
+      agora
+    );
+
+  estado[posto.codigo].timestamp =
+    agora.getTime();
+
+
+  atualizarCard(
+    posto
+  );
+
+  fazerAviso(
+    posto
+  );
+
+  atualizarResumo();
+
+  salvarStorage();
+
+
+  /*
+   * Registra histórico.
+   */
+  registrarHistorico(
+    posto.codigo,
+    {
+      codigo:
+        posto.codigo,
+
+      evento:
+        evento,
+
+      status:
+        novoStatus,
+
+      dataHora:
+        formatarDataHora(
+          agora
+        ),
+
+      timestamp:
+        agora.getTime()
+    }
+  );
+
+
+  /*
+   * Envia e-mail.
+   */
+  if (
+    enviarEmail !== false
+  ) {
+
+    enviarAlerta(
+      posto,
+      evento,
+      novoStatus
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   PLAYER INICIADO
+   ========================================================= */
+
+function registrarPlayerIniciado() {
+
+  if (!POSTO_ATUAL) {
+
+    console.warn(
+      "Nenhum posto definido na URL."
+    );
+
+    return;
+
+  }
+
+  registrarEvento(
+    POSTO_ATUAL,
+    "PLAYER INICIADO",
+    "online",
+    true
+  );
+
+}
+
+
+/* =========================================================
+   PLAYER PAUSADO
+   ========================================================= */
+
+function registrarPlayerPausado() {
+
+  if (!POSTO_ATUAL) {
+
+    console.warn(
+      "Nenhum posto definido na URL."
+    );
+
+    return;
+
+  }
+
+  registrarEvento(
+    POSTO_ATUAL,
+    "PLAYER PAUSADO",
+    "pausado",
+    true
+  );
+
+}
+
+
+/* =========================================================
+   PLAYER OFFLINE
+   ========================================================= */
+
+function registrarPlayerOffline() {
+
+  if (!POSTO_ATUAL) {
+
+    console.warn(
+      "Nenhum posto definido na URL."
+    );
+
+    return;
+
+  }
+
+  registrarEvento(
+    POSTO_ATUAL,
+    "RÁDIO OFFLINE",
+    "offline",
+    true
+  );
+
+}
+
+
+/* =========================================================
+   RÁDIO RESTABELECIDA
+   ========================================================= */
+
+function registrarRadioRestabelecida() {
+
+  if (!POSTO_ATUAL) {
+
+    console.warn(
+      "Nenhum posto definido na URL."
+    );
+
+    return;
+
+  }
+
+  registrarEvento(
+    POSTO_ATUAL,
+    "RÁDIO RESTABELECIDA",
+    "online",
+    true
+  );
+
+}
+
+
+/* =========================================================
+   RECEBER EVENTOS DO PLAYER VIA postMessage
+   =========================================================
+   
+   O player/iframe pode enviar:
+
+   {
+     evento: "pause"
+   }
+
+   ou:
+
+   {
+     status: "paused"
+   }
+
+   ou:
+
+   {
+     evento: "PLAYER PAUSADO"
+   }
+
+   Também aceita strings.
+   ========================================================= */
+
+function processarMensagemDoPlayer(
+  eventoRecebido
+) {
+
+  if (!POSTO_ATUAL) {
+
+    console.warn(
+      "Mensagem recebida, mas nenhum posto foi definido."
+    );
+
+    return;
+
+  }
+
+
+  let dados =
+    eventoRecebido;
+
+
+  /*
+   * Se vier como string JSON,
+   * tenta converter.
+   */
+  if (
+    typeof dados === "string"
+  ) {
+
+    try {
+
+      dados =
+        JSON.parse(
+          dados
+        );
+
+    } catch (erro) {
+
+      dados = {
+        evento:
+          dados
+      };
+
+    }
+
+  }
+
+
+  /*
+   * Se vier dentro de data.
+   */
+  if (
+    dados &&
+    dados.data
+  ) {
+
+    if (
+      typeof dados.data === "object"
+    ) {
+
+      dados =
+        dados.data;
+
+    } else {
+
+      try {
+
+        dados =
+          JSON.parse(
+            dados.data
+          );
+
+      } catch (erro) {
+
+        dados = {
+          evento:
+            dados.data
+        };
+
+      }
+
+    }
+
+  }
+
+
+  if (
+    !dados
+  ) {
+    return;
+  }
+
+
+  const eventoOriginal =
+    dados.evento ||
+    dados.event ||
+    dados.type ||
+    dados.action ||
+    dados.status ||
+    "";
+
+
+  const normalizado =
+    normalizarEvento(
+      eventoOriginal
+    );
+
+
+  /*
+   * Caso não tenha reconhecido pelo evento,
+   * tenta pelo status.
+   */
+  let resultado =
+    normalizado;
+
+
+  if (
+    !resultado &&
+    dados.status
+  ) {
+
+    resultado =
+      normalizarEvento(
+        dados.status
+      );
+
+  }
+
+
+  if (!resultado) {
+
+    console.log(
+      "Mensagem do player não reconhecida:",
+      dados
+    );
+
+    return;
+
+  }
+
+
+  console.log(
+    "🎧 EVENTO RECEBIDO DO PLAYER:",
+    resultado.evento,
+    resultado.status,
+    "POSTO:",
+    POSTO_ATUAL.codigo
+  );
+
+
+  registrarEvento(
+    POSTO_ATUAL,
+    resultado.evento,
+    resultado.status,
+    true
+  );
+
+}
+
+
+/* =========================================================
+   ESCUTAR postMessage
+   ========================================================= */
+
+function configurarMonitoramentoDoPlayer() {
+
+  window.addEventListener(
+    "message",
+    function (event) {
+
+      /*
+       * Não bloqueamos por origem aqui porque
+       * o player pode utilizar domínio externo.
+       *
+       * O conteúdo recebido é tratado somente
+       * como evento/status.
+       */
+      console.log(
+        "📡 postMessage recebido:",
+        event.data
+      );
+
+
+      processarMensagemDoPlayer(
+        event.data
+      );
+
+    }
+  );
+
+
+  console.log(
+    "✅ Monitoramento postMessage ativado."
+  );
+
+}
+
+
+/* =========================================================
+   TESTE MANUAL DO ALERTA
+   ========================================================= */
+
+function testarAlertaAtual() {
+
+  if (!POSTO_ATUAL) {
+
+    console.error(
+      "Abra a página com ?posto=graciosa, ?posto=fatima, etc."
+    );
+
+    return;
+
+  }
+
+  const id =
+    "TESTE_" +
+    POSTO_ATUAL.codigo +
+    "_" +
+    Date.now();
+
+
+  const evento =
+    "TESTE DE ALERTA";
+
+
+  const status =
+    "offline";
+
+
+  /*
+   * Para teste manual,
+   * remove o bloqueio de duplicidade.
+   */
+  const chave =
+    POSTO_ATUAL.codigo +
+    "|" +
+    evento +
+    "|" +
+    status;
+
+
+  delete controleAlertas[chave];
+
+  salvarControleAlertas();
+
+
+  enviarAlerta(
+    POSTO_ATUAL,
+    evento,
+    status
+  );
+
+
+  console.log(
+    "🧪 TESTE ENVIADO:",
+    POSTO_ATUAL.nome,
+    id
+  );
 
 }
 
@@ -1493,590 +2339,7 @@ function registrarHistorico(
 
 
 /* =========================================================
-   ATUALIZAR UM POSTO
-   ========================================================= */
-
-function atualizarUmPosto(
-  codigo
-) {
-
-  const posto =
-    POSTOS.find(
-      function (p) {
-
-        return p.codigo === codigo;
-
-      }
-    );
-
-
-  if (!posto) {
-
-    return;
-
-  }
-
-
-  statusDoSistema(
-    "Consultando " +
-    posto.nome +
-    "..."
-  );
-
-
-  const url =
-    API_URL +
-    "?chave=" +
-    encodeURIComponent(
-      CHAVE
-    ) +
-    "&posto=" +
-    encodeURIComponent(
-      codigo
-    );
-
-
-  fetch(
-    url,
-    {
-      method: "GET",
-      redirect: "follow",
-      cache: "no-store"
-    }
-  )
-
-    .then(
-      function (res) {
-
-        if (!res.ok) {
-
-          throw new Error(
-            "HTTP " +
-            res.status
-          );
-
-        }
-
-        return res.json();
-
-      }
-    )
-
-    .then(
-      function (resposta) {
-
-        if (
-          !resposta ||
-          resposta.ok === false
-        ) {
-
-          throw new Error(
-            resposta &&
-            resposta.mensagem
-              ? resposta.mensagem
-              : "Falha"
-          );
-
-        }
-
-
-        const item =
-          resposta.dados ||
-          resposta;
-
-
-        if (
-          item &&
-          item.codigo
-        ) {
-
-          interpretarRespostaDaApi(
-            item
-          );
-
-
-          atualizarCard(
-            posto
-          );
-
-
-          if (
-            POSTO_ATUAL &&
-            POSTO_ATUAL.codigo ===
-              posto.codigo
-          ) {
-
-            fazerAviso(
-              posto
-            );
-
-          }
-
-
-          atualizarResumo();
-
-          salvarStorage();
-
-          atualizarUltimaAtualizacao();
-
-
-          statusDoSistema(
-            "Sistema online"
-          );
-
-        } else {
-
-          statusDoSistema(
-            "Nenhum dado recebido."
-          );
-
-        }
-
-      }
-    )
-
-    .catch(
-      function (erro) {
-
-        console.error(
-          "Erro ao consultar posto:",
-          erro
-        );
-
-
-        statusDoSistema(
-          "Falha ao consultar " +
-          posto.nome +
-          "."
-        );
-
-      }
-    );
-
-}
-
-
-/* =========================================================
-   ENVIAR ALERTA PARA O GOOGLE APPS SCRIPT
-   ========================================================= */
-
-function enviarAlerta(
-  posto,
-  evento,
-  status
-) {
-
-  if (!posto) {
-
-    console.error(
-      "Posto não informado."
-    );
-
-    return;
-
-  }
-
-
-  /*
-   * Gera ID ÚNICO.
-   *
-   * Assim cada ocorrência é um evento
-   * independente.
-   */
-  const idEvento =
-    String(
-      evento
-        .toUpperCase()
-        .replace(
-          /\s+/g,
-          "_"
-        )
-    ) +
-    "_" +
-    posto.codigo +
-    "_" +
-    Date.now();
-
-
-  /*
-   * Monta a URL.
-   */
-  const url =
-    API_URL +
-
-    "?chave=" +
-    encodeURIComponent(
-      CHAVE
-    ) +
-
-    "&codigo=" +
-    encodeURIComponent(
-      posto.codigo
-    ) +
-
-    "&posto=" +
-    encodeURIComponent(
-      posto.nome
-    ) +
-
-    "&evento=" +
-    encodeURIComponent(
-      evento
-    ) +
-
-    "&status=" +
-    encodeURIComponent(
-      status
-    ) +
-
-    "&idEvento=" +
-    encodeURIComponent(
-      idEvento
-    );
-
-
-  console.log(
-    "================================="
-  );
-
-  console.log(
-    "ENVIANDO ALERTA"
-  );
-
-  console.log(
-    "Posto:",
-    posto.nome
-  );
-
-  console.log(
-    "Código:",
-    posto.codigo
-  );
-
-  console.log(
-    "Evento:",
-    evento
-  );
-
-  console.log(
-    "Status:",
-    status
-  );
-
-  console.log(
-    "ID:",
-    idEvento
-  );
-
-  console.log(
-    "================================="
-  );
-
-
-  /*
-   * Envia para o Apps Script.
-   */
-  fetch(
-    url,
-    {
-      method: "GET",
-      redirect: "follow",
-      cache: "no-store"
-    }
-  )
-
-    .then(
-      function (res) {
-
-        return res.json();
-
-      }
-    )
-
-    .then(
-      function (data) {
-
-        console.log(
-          "RESPOSTA DO GOOGLE APPS SCRIPT:",
-          data
-        );
-
-
-        if (
-          data &&
-          data.ok
-        ) {
-
-          console.log(
-            "✅ ALERTA ENVIADO:",
-            posto.nome
-          );
-
-        } else {
-
-          console.error(
-            "❌ GOOGLE APPS SCRIPT RECUSOU:",
-            data
-          );
-
-        }
-
-      }
-    )
-
-    .catch(
-      function (erro) {
-
-        console.error(
-          "❌ ERRO AO ENVIAR ALERTA:",
-          erro
-        );
-
-      }
-    );
-
-}
-
-
-/* =========================================================
-   FUNÇÕES DE EVENTO
-   ========================================================= */
-
-
-/*
- * PLAYER INICIADO
- */
-function registrarPlayerIniciado() {
-
-  if (!POSTO_ATUAL) {
-
-    console.warn(
-      "Nenhum posto definido na URL."
-    );
-
-    return;
-
-  }
-
-
-  const posto =
-    POSTO_ATUAL;
-
-
-  estado[posto.codigo].status =
-    "online";
-
-
-  estado[posto.codigo].evento =
-    "PLAYER INICIADO";
-
-
-  estado[posto.codigo].dataHora =
-    formatarDataHora(
-      new Date()
-    );
-
-
-  atualizarCard(
-    posto
-  );
-
-
-  fazerAviso(
-    posto
-  );
-
-
-  salvarStorage();
-
-
-  enviarAlerta(
-    posto,
-    "PLAYER INICIADO",
-    "online"
-  );
-
-}
-
-
-/*
- * PLAYER PAUSADO
- */
-function registrarPlayerPausado() {
-
-  if (!POSTO_ATUAL) {
-
-    console.warn(
-      "Nenhum posto definido na URL."
-    );
-
-    return;
-
-  }
-
-
-  const posto =
-    POSTO_ATUAL;
-
-
-  estado[posto.codigo].status =
-    "pausado";
-
-
-  estado[posto.codigo].evento =
-    "PLAYER PAUSADO";
-
-
-  estado[posto.codigo].dataHora =
-    formatarDataHora(
-      new Date()
-    );
-
-
-  atualizarCard(
-    posto
-  );
-
-
-  fazerAviso(
-    posto
-  );
-
-
-  salvarStorage();
-
-
-  enviarAlerta(
-    posto,
-    "PLAYER PAUSADO",
-    "pausado"
-  );
-
-}
-
-
-/*
- * PLAYER OFFLINE
- */
-function registrarPlayerOffline() {
-
-  if (!POSTO_ATUAL) {
-
-    console.warn(
-      "Nenhum posto definido na URL."
-    );
-
-    return;
-
-  }
-
-
-  const posto =
-    POSTO_ATUAL;
-
-
-  estado[posto.codigo].status =
-    "offline";
-
-
-  estado[posto.codigo].evento =
-    "RÁDIO OFFLINE";
-
-
-  estado[posto.codigo].dataHora =
-    formatarDataHora(
-      new Date()
-    );
-
-
-  atualizarCard(
-    posto
-  );
-
-
-  fazerAviso(
-    posto
-  );
-
-
-  salvarStorage();
-
-
-  enviarAlerta(
-    posto,
-    "RÁDIO OFFLINE",
-    "offline"
-  );
-
-}
-
-
-/*
- * RÁDIO RESTABELECIDA
- */
-function registrarRadioRestabelecida() {
-
-  if (!POSTO_ATUAL) {
-
-    return;
-
-  }
-
-
-  const posto =
-    POSTO_ATUAL;
-
-
-  estado[posto.codigo].status =
-    "online";
-
-
-  estado[posto.codigo].evento =
-    "RÁDIO RESTABELECIDA";
-
-
-  estado[posto.codigo].dataHora =
-    formatarDataHora(
-      new Date()
-    );
-
-
-  atualizarCard(
-    posto
-  );
-
-
-  fazerAviso(
-    posto
-  );
-
-
-  salvarStorage();
-
-
-  enviarAlerta(
-    posto,
-    "RÁDIO RESTABELECIDA",
-    "online"
-  );
-
-}
-
-
-/* =========================================================
-   EXPOSIÇÃO DAS FUNÇÕES
-   =========================================================
-   Permite que o código do player chame:
-
-   registrarPlayerIniciado()
-   registrarPlayerPausado()
-   registrarPlayerOffline()
-   registrarRadioRestabelecida()
-   ========================================================= */
-
-
-/* =========================================================
-   HISTÓRICO
+   ABRIR HISTÓRICO
    ========================================================= */
 
 function abrirHistorico(
@@ -2094,9 +2357,7 @@ function abrirHistorico(
 
 
   if (!posto) {
-
     return;
-
   }
 
 
@@ -2191,11 +2452,21 @@ function abrirHistorico(
   }
 
 
-  ELEMENTO.historyModal.hidden =
-    false;
+  if (
+    ELEMENTO.historyModal
+  ) {
+
+    ELEMENTO.historyModal.hidden =
+      false;
+
+  }
 
 }
 
+
+/* =========================================================
+   FECHAR HISTÓRICO
+   ========================================================= */
 
 function fecharHistorico() {
 
@@ -2275,7 +2546,7 @@ function configurarModal() {
 
 
 /* =========================================================
-   BOTÕES
+   BOTÕES DOS POSTOS
    ========================================================= */
 
 function configurarBotoesDosPostos() {
@@ -2341,6 +2612,168 @@ function configurarBotoesDosPostos() {
 
 
 /* =========================================================
+   ATUALIZAR UM POSTO
+   ========================================================= */
+
+function atualizarUmPosto(
+  codigo
+) {
+
+  const posto =
+    POSTOS.find(
+      function (p) {
+
+        return p.codigo === codigo;
+
+      }
+    );
+
+
+  if (!posto) {
+    return;
+  }
+
+
+  statusDoSistema(
+    "Consultando " +
+    posto.nome +
+    "..."
+  );
+
+
+  /*
+   * Consulta individual usando parametro
+   * que o Code.gs já aceita na consulta.
+   */
+  const url =
+    API_URL +
+    "?chave=" +
+    encodeURIComponent(
+      CHAVE
+    );
+
+
+  fetch(
+    url,
+    {
+      method: "GET",
+      redirect: "follow",
+      cache: "no-store"
+    }
+  )
+
+    .then(
+      function (res) {
+
+        if (!res.ok) {
+
+          throw new Error(
+            "HTTP " +
+            res.status
+          );
+
+        }
+
+        return res.json();
+
+      }
+    )
+
+    .then(
+      function (resposta) {
+
+        if (
+          !resposta ||
+          resposta.ok === false
+        ) {
+
+          throw new Error(
+            resposta &&
+            resposta.mensagem
+              ? resposta.mensagem
+              : "Falha"
+          );
+
+        }
+
+
+        const dados =
+          resposta.dados ||
+          {};
+
+
+        const item =
+          dados[
+            posto.codigo
+          ];
+
+
+        if (
+          item
+        ) {
+
+          interpretarRespostaDaApi(
+            item
+          );
+
+          atualizarCard(
+            posto
+          );
+
+          if (
+            POSTO_ATUAL &&
+            POSTO_ATUAL.codigo ===
+              posto.codigo
+          ) {
+
+            fazerAviso(
+              posto
+            );
+
+          }
+
+          atualizarResumo();
+
+          salvarStorage();
+
+          atualizarUltimaAtualizacao();
+
+          statusDoSistema(
+            "Sistema online"
+          );
+
+        } else {
+
+          statusDoSistema(
+            "Nenhum dado recebido."
+          );
+
+        }
+
+      }
+    )
+
+    .catch(
+      function (erro) {
+
+        console.error(
+          "Erro ao consultar posto:",
+          erro
+        );
+
+        statusDoSistema(
+          "Falha ao consultar " +
+          posto.nome +
+          "."
+        );
+
+      }
+    );
+
+}
+
+
+/* =========================================================
    BOTÃO ATUALIZAR TODOS
    ========================================================= */
 
@@ -2349,9 +2782,7 @@ function configurarBotaoAtualizarTodos() {
   if (
     !ELEMENTO.btnAtualizarTodos
   ) {
-
     return;
-
   }
 
 
@@ -2445,6 +2876,9 @@ function inicializar() {
   carregarStorage();
 
 
+  carregarControleAlertas();
+
+
   renderizarCards();
 
 
@@ -2463,14 +2897,14 @@ function inicializar() {
   configurarAutoAtualizacao();
 
 
-  /*
-   * PRIMEIRA CONSULTA
-   */
+  configurarMonitoramentoDoPlayer();
+
+
   consultarApi();
 
 
   console.log(
-    "Monitoramento inicializado."
+    "✅ Monitoramento inicializado."
   );
 
 }
@@ -2498,7 +2932,7 @@ if (
 
 
 /* =========================================================
-   DISPONIBILIZAR FUNÇÕES GLOBALMENTE
+   FUNÇÕES GLOBAIS
    ========================================================= */
 
 window.registrarPlayerIniciado =
@@ -2515,4 +2949,10 @@ window.registrarRadioRestabelecida =
 
 window.enviarAlerta =
   enviarAlerta;
+
+window.testarAlertaAtual =
+  testarAlertaAtual;
+
+window.processarMensagemDoPlayer =
+  processarMensagemDoPlayer;
 
