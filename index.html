@@ -1,206 +1,1033 @@
 <!DOCTYPE html>
+
 <html lang="pt-BR">
+
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Monitoramento de Rádio | Postos Graciosa</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: #0f172a;
-      color: #e2e8f0;
-      min-height: 100vh;
-    }
-    .container { max-width: 1100px; margin: 0 auto; padding: 24px; }
-    .cabecalho { text-align: center; padding: 20px 0 10px; }
-    .empresa {
-      display: inline-block;
-      background: #f59e0b;
-      color: #0f172a;
-      font-weight: 800;
-      letter-spacing: 2px;
-      padding: 6px 16px;
-      border-radius: 999px;
-      font-size: 0.85rem;
-      margin-bottom: 12px;
-    }
-    .cabecalho h1 { font-size: 1.9rem; color: #ffffff; }
-    .descricao { color: #94a3b8; margin-top: 6px; font-size: 0.95rem; }
-    .relogio { margin-top: 12px; font-size: 1.6rem; font-weight: 700; color: #38bdf8; }
-    .relogio #date { font-size: 1rem; color: #94a3b8; margin-left: 10px; }
+    <meta charset="UTF-8">
 
-    .resumo {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-      gap: 12px;
-      margin: 24px 0;
-    }
-    .resumo-card {
-      background: #1e293b;
-      border-radius: 12px;
-      padding: 18px;
-      text-align: center;
-      border: 1px solid #334155;
-    }
-    .resumo-card span { display: block; font-size: 2rem; font-weight: 800; color: #ffffff; }
-    .resumo-card label { font-size: 0.7rem; letter-spacing: 1px; color: #94a3b8; }
 
-    .barra-controle {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 20px;
-      background: #1e293b;
-      border: 1px solid #334155;
-      border-radius: 12px;
-      padding: 12px 16px;
-    }
-    #lastUpdate { font-size: 0.85rem; color: #94a3b8; }
-    .btn {
-      background: #2563eb;
-      color: #fff;
-      border: none;
-      border-radius: 8px;
-      padding: 10px 16px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background 0.2s;
-    }
-    .btn:hover { background: #1d4ed8; }
+<meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+>
 
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 16px;
-      margin-bottom: 24px;
-    }
-    .card {
-      background: #1e293b;
-      border: 1px solid #334155;
-      border-radius: 14px;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-    }
-    .card-header {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 14px 16px;
-      border-bottom: 1px solid #334155;
-    }
-    .card-header .icone { font-size: 1.5rem; }
-    .card-header .nome { font-weight: 700; color: #fff; font-size: 0.95rem; }
-    .card-header .codigo { color: #64748b; font-size: 0.75rem; }
-    .status-badge {
-      margin-left: auto;
-      padding: 4px 10px;
-      border-radius: 999px;
-      font-size: 0.7rem;
-      font-weight: 700;
-      letter-spacing: 0.5px;
-    }
-    .status-online { background: #052e16; color: #4ade80; }
-    .status-pausado { background: #451a03; color: #fbbf24; }
-    .status-offline { background: #450a0a; color: #f87171; }
-    .status-verificando { background: #0c4a6e; color: #38bdf8; }
+<meta
+    name="description"
+    content="Painel central de monitoramento da Rádio Graciosa - Postos Graciosa"
+>
 
-    .card-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
-    .card-body .linha { font-size: 0.82rem; color: #cbd5e1; }
-    .card-body .linha strong { color: #94a3b8; font-weight: 600; }
-    .card-body .evento {
-      background: #0f172a;
-      border-radius: 8px;
-      padding: 8px 10px;
-      font-size: 0.8rem;
-      color: #e2e8f0;
-      min-height: 36px;
-    }
+<meta
+    name="theme-color"
+    content="#0e6835"
+>
 
-    .card-footer {
-      display: flex;
-      gap: 8px;
-      padding: 12px 16px;
-      border-top: 1px solid #334155;
-    }
-    .card-footer .btn { flex: 1; font-size: 0.8rem; padding: 8px; }
-    .btn-verde { background: #16a34a; }
-    .btn-verde:hover { background: #15803d; }
-    .btn-cinza { background: #475569; }
-    .btn-cinza:hover { background: #334155; }
+<title>Monitoramento de Rádio | Postos Graciosa</title>
 
-    /* AVISO DESTACADO */
-    .aviso {
-      background: #1e293b;
-      border: 2px solid #2563eb;
-      border-radius: 14px;
-      padding: 16px;
-      margin-bottom: 20px;
-      display: none;
-    }
-    .aviso.visivel { display: block; }
-    .aviso h3 { font-size: 1rem; color: #fff; margin-bottom: 8px; }
-    .aviso p { font-size: 0.9rem; color: #cbd5e1; }
-    .aviso .aviso-status { font-weight: 800; }
+<link
+    rel="icon"
+    type="image/png"
+    href="https://avatars.githubusercontent.com/u/313125343?s=60&v=4"
+>
 
-    .modal {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.6);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 100;
-      padding: 16px;
-    }
-    .modal[hidden] { display: none; }
-    .modal-content {
-      background: #1e293b;
-      border: 1px solid #334155;
-      border-radius: 14px;
-      max-width: 520px;
-      width: 100%;
-      max-height: 80vh;
-      display: flex;
-      flex-direction: column;
-    }
-    .modal-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 14px 16px;
-      border-bottom: 1px solid #334155;
-    }
-    .modal-header h2 { font-size: 1rem; color: #fff; }
-    .modal-header button {
-      background: #334155;
-      border: none;
-      color: #e2e8f0;
-      width: 30px;
-      height: 30px;
-      border-radius: 8px;
-      cursor: pointer;
-    }
-    #historyList {
-      list-style: none;
-      overflow-y: auto;
-      padding: 12px 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-    #historyList li {
-      background: #0f172a;
-      border-radius: 8px;
-      padding: 8px 10px;
-      font-size: 0.8rem;
-    }
-    #historyList .h-status { font-weight: 700; }
+<link
+    rel="stylesheet"
+    href="style.css"
+>
 
-    .rodape { text-align: center; color: #64748b; font-size: 0.8rem; padding: 10px 0; }
-  </style>
+
 </head>
+
 <body>
-  <div class="container">
+
+
+<!-- =====================================================
+     CONTAINER PRINCIPAL
+====================================================== -->
+
+<main class="app">
+
+    <!-- =================================================
+         CABEÇALHO
+    ================================================== -->
+
+    <header class="header">
+
+        <div class="header-brand">
+
+            <div class="brand-icon">
+                <span>📻</span>
+            </div>
+
+            <div class="brand-text">
+                <h1>Monitoramento de Rádio</h1>
+                <p>Postos Graciosa</p>
+            </div>
+
+        </div>
+
+        <div class="header-status">
+
+            <div
+                class="system-status"
+                id="systemStatus"
+            >
+                <span
+                    class="status-dot"
+                    id="systemStatusDot"
+                ></span>
+
+                <span id="systemStatusText">
+                    Sistema iniciando...
+                </span>
+            </div>
+
+            <div
+                class="last-update"
+                id="lastUpdate"
+            >
+                Última atualização: --
+            </div>
+
+        </div>
+
+    </header>
+
+
+    <!-- =================================================
+         RESUMO GERAL
+    ================================================== -->
+
+    <section class="summary">
+
+        <div class="summary-card">
+
+            <div class="summary-icon online">
+                🟢
+            </div>
+
+            <div class="summary-content">
+
+                <span class="summary-label">
+                    Ativos
+                </span>
+
+                <strong
+                    id="totalOnline"
+                    class="summary-number"
+                >
+                    0
+                </strong>
+
+            </div>
+
+        </div>
+
+
+        <div class="summary-card">
+
+            <div class="summary-icon offline">
+                🔴
+            </div>
+
+            <div class="summary-content">
+
+                <span class="summary-label">
+                    Parados
+                </span>
+
+                <strong
+                    id="totalOffline"
+                    class="summary-number"
+                >
+                    0
+                </strong>
+
+            </div>
+
+        </div>
+
+
+        <div class="summary-card">
+
+            <div class="summary-icon checking">
+                🟠
+            </div>
+
+            <div class="summary-content">
+
+                <span class="summary-label">
+                    Verificando
+                </span>
+
+                <strong
+                    id="totalChecking"
+                    class="summary-number"
+                >
+                    0
+                </strong>
+
+            </div>
+
+        </div>
+
+
+        <div class="summary-card">
+
+            <div class="summary-icon total">
+                📻
+            </div>
+
+            <div class="summary-content">
+
+                <span class="summary-label">
+                    Total de postos
+                </span>
+
+                <strong
+                    id="totalPostos"
+                    class="summary-number"
+                >
+                    6
+                </strong>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <!-- =================================================
+         ÁREA DE CONTROLE
+    ================================================== -->
+
+    <section class="control-bar">
+
+        <div class="control-info">
+
+            <h2>
+                Status dos postos
+            </h2>
+
+            <p>
+                Monitoramento individual dos players
+            </p>
+
+        </div>
+
+
+        <button
+            type="button"
+            class="btn-refresh"
+            id="btnRefresh"
+        >
+
+            <span
+                class="refresh-icon"
+                id="refreshIcon"
+            >
+                ↻
+            </span>
+
+            <span>
+                Atualizar agora
+            </span>
+
+        </button>
+
+    </section>
+
+
+    <!-- =================================================
+         GRID DOS POSTOS
+    ================================================== -->
+
+    <section
+        class="postos-grid"
+        id="postosGrid"
+        aria-label="Postos monitorados"
+    >
+
+
+        <!-- =============================================
+             GRACIOSA
+        ============================================== -->
+
+        <article
+            class="posto-card checking"
+            id="posto-graciosa"
+            data-posto="graciosa"
+        >
+
+            <div class="posto-card-header">
+
+                <div class="posto-identification">
+
+                    <div class="posto-icon">
+                        📻
+                    </div>
+
+                    <div>
+
+                        <h3>
+                            Graciosa
+                        </h3>
+
+                        <span class="posto-code">
+                            POSTO GRACIOSA
+                        </span>
+
+                    </div>
+
+                </div>
+
+                <div
+                    class="posto-status checking"
+                    id="status-graciosa"
+                >
+                    <span class="status-dot"></span>
+                    <span class="status-text">
+                        Verificando
+                    </span>
+                </div>
+
+            </div>
+
+
+            <div class="posto-body">
+
+                <div class="player-status">
+
+                    <span class="info-label">
+                        Player
+                    </span>
+
+                    <strong id="player-graciosa">
+                        Aguardando verificação
+                    </strong>
+
+                </div>
+
+
+                <div class="posto-times">
+
+                    <div class="time-item">
+
+                        <span class="info-label">
+                            Última verificação
+                        </span>
+
+                        <strong id="last-graciosa">
+                            --
+                        </strong>
+
+                    </div>
+
+
+                    <div class="time-item">
+
+                        <span class="info-label">
+                            Último evento
+                        </span>
+
+                        <strong id="event-graciosa">
+                            --
+                        </strong>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <div class="posto-card-footer">
+
+                <span
+                    class="event-indicator"
+                    id="indicator-graciosa"
+                >
+                    Aguardando dados...
+                </span>
+
+                <a
+                    class="btn-open"
+                    href="https://postosgraciosa.github.io/monitor-radio-graciosa/?posto=graciosa"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                >
+                    Abrir monitor
+                </a>
+
+            </div>
+
+        </article>
+
+
+        <!-- =============================================
+             FÁTIMA
+        ============================================== -->
+
+        <article
+            class="posto-card checking"
+            id="posto-fatima"
+            data-posto="fatima"
+        >
+
+            <div class="posto-card-header">
+
+                <div class="posto-identification">
+
+                    <div class="posto-icon">
+                        📻
+                    </div>
+
+                    <div>
+
+                        <h3>
+                            Fátima
+                        </h3>
+
+                        <span class="posto-code">
+                            POSTO FÁTIMA
+                        </span>
+
+                    </div>
+
+                </div>
+
+                <div
+                    class="posto-status checking"
+                    id="status-fatima"
+                >
+                    <span class="status-dot"></span>
+                    <span class="status-text">
+                        Verificando
+                    </span>
+                </div>
+
+            </div>
+
+
+            <div class="posto-body">
+
+                <div class="player-status">
+
+                    <span class="info-label">
+                        Player
+                    </span>
+
+                    <strong id="player-fatima">
+                        Aguardando verificação
+                    </strong>
+
+                </div>
+
+
+                <div class="posto-times">
+
+                    <div class="time-item">
+
+                        <span class="info-label">
+                            Última verificação
+                        </span>
+
+                        <strong id="last-fatima">
+                            --
+                        </strong>
+
+                    </div>
+
+
+                    <div class="time-item">
+
+                        <span class="info-label">
+                            Último evento
+                        </span>
+
+                        <strong id="event-fatima">
+                            --
+                        </strong>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <div class="posto-card-footer">
+
+                <span
+                    class="event-indicator"
+                    id="indicator-fatima"
+                >
+                    Aguardando dados...
+                </span>
+
+                <a
+                    class="btn-open"
+                    href="https://postosgraciosa.github.io/monitor-radio-graciosa/?posto=fatima"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                >
+                    Abrir monitor
+                </a>
+
+            </div>
+
+        </article>
+
+
+        <!-- =============================================
+             JARIVA
+        ============================================== -->
+
+        <article
+            class="posto-card checking"
+            id="posto-jariva"
+            data-posto="jariva"
+        >
+
+            <div class="posto-card-header">
+
+                <div class="posto-identification">
+
+                    <div class="posto-icon">
+                        📻
+                    </div>
+
+                    <div>
+
+                        <h3>
+                            Jariva
+                        </h3>
+
+                        <span class="posto-code">
+                            POSTO JARIVA
+                        </span>
+
+                    </div>
+
+                </div>
+
+                <div
+                    class="posto-status checking"
+                    id="status-jariva"
+                >
+                    <span class="status-dot"></span>
+                    <span class="status-text">
+                        Verificando
+                    </span>
+                </div>
+
+            </div>
+
+
+            <div class="posto-body">
+
+                <div class="player-status">
+
+                    <span class="info-label">
+                        Player
+                    </span>
+
+                    <strong id="player-jariva">
+                        Aguardando verificação
+                    </strong>
+
+                </div>
+
+
+                <div class="posto-times">
+
+                    <div class="time-item">
+
+                        <span class="info-label">
+                            Última verificação
+                        </span>
+
+                        <strong id="last-jariva">
+                            --
+                        </strong>
+
+                    </div>
+
+
+                    <div class="time-item">
+
+                        <span class="info-label">
+                            Último evento
+                        </span>
+
+                        <strong id="event-jariva">
+                            --
+                        </strong>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <div class="posto-card-footer">
+
+                <span
+                    class="event-indicator"
+                    id="indicator-jariva"
+                >
+                    Aguardando dados...
+                </span>
+
+                <a
+                    class="btn-open"
+                    href="https://postosgraciosa.github.io/monitor-radio-graciosa/?posto=jariva"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                >
+                    Abrir monitor
+                </a>
+
+            </div>
+
+        </article>
+
+
+        <!-- =============================================
+             BEMER
+        ============================================== -->
+
+        <article
+            class="posto-card checking"
+            id="posto-bemer"
+            data-posto="bemer"
+        >
+
+            <div class="posto-card-header">
+
+                <div class="posto-identification">
+
+                    <div class="posto-icon">
+                        📻
+                    </div>
+
+                    <div>
+
+                        <h3>
+                            Bemer
+                        </h3>
+
+                        <span class="posto-code">
+                            POSTO BEMER
+                        </span>
+
+                    </div>
+
+                </div>
+
+                <div
+                    class="posto-status checking"
+                    id="status-bemer"
+                >
+                    <span class="status-dot"></span>
+                    <span class="status-text">
+                        Verificando
+                    </span>
+                </div>
+
+            </div>
+
+
+            <div class="posto-body">
+
+                <div class="player-status">
+
+                    <span class="info-label">
+                        Player
+                    </span>
+
+                    <strong id="player-bemer">
+                        Aguardando verificação
+                    </strong>
+
+                </div>
+
+
+                <div class="posto-times">
+
+                    <div class="time-item">
+
+                        <span class="info-label">
+                            Última verificação
+                        </span>
+
+                        <strong id="last-bemer">
+                            --
+                        </strong>
+
+                    </div>
+
+
+                    <div class="time-item">
+
+                        <span class="info-label">
+                            Último evento
+                        </span>
+
+                        <strong id="event-bemer">
+                            --
+                        </strong>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <div class="posto-card-footer">
+
+                <span
+                    class="event-indicator"
+                    id="indicator-bemer"
+                >
+                    Aguardando dados...
+                </span>
+
+                <a
+                    class="btn-open"
+                    href="https://postosgraciosa.github.io/monitor-radio-graciosa/?posto=bemer"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                >
+                    Abrir monitor
+                </a>
+
+            </div>
+
+        </article>
+
+
+        <!-- =============================================
+             GRACIOSA V
+        ============================================== -->
+
+        <article
+            class="posto-card checking"
+            id="posto-graciosa-v"
+            data-posto="graciosa-v"
+        >
+
+            <div class="posto-card-header">
+
+                <div class="posto-identification">
+
+                    <div class="posto-icon">
+                        📻
+                    </div>
+
+                    <div>
+
+                        <h3>
+                            Graciosa V
+                        </h3>
+
+                        <span class="posto-code">
+                            POSTO GRACIOSA V
+                        </span>
+
+                    </div>
+
+                </div>
+
+                <div
+                    class="posto-status checking"
+                    id="status-graciosa-v"
+                >
+                    <span class="status-dot"></span>
+                    <span class="status-text">
+                        Verificando
+                    </span>
+                </div>
+
+            </div>
+
+
+            <div class="posto-body">
+
+                <div class="player-status">
+
+                    <span class="info-label">
+                        Player
+                    </span>
+
+                    <strong id="player-graciosa-v">
+                        Aguardando verificação
+                    </strong>
+
+                </div>
+
+
+                <div class="posto-times">
+
+                    <div class="time-item">
+
+                        <span class="info-label">
+                            Última verificação
+                        </span>
+
+                        <strong id="last-graciosa-v">
+                            --
+                        </strong>
+
+                    </div>
+
+
+                    <div class="time-item">
+
+                        <span class="info-label">
+                            Último evento
+                        </span>
+
+                        <strong id="event-graciosa-v">
+                            --
+                        </strong>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <div class="posto-card-footer">
+
+                <span
+                    class="event-indicator"
+                    id="indicator-graciosa-v"
+                >
+                    Aguardando dados...
+                </span>
+
+                <a
+                    class="btn-open"
+                    href="https://postosgraciosa.github.io/monitor-radio-graciosa/?posto=graciosa-v"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                >
+                    Abrir monitor
+                </a>
+
+            </div>
+
+        </article>
+
+
+        <!-- =============================================
+             PIRAÍ
+        ============================================== -->
+
+        <article
+            class="posto-card checking"
+            id="posto-pirai"
+            data-posto="pirai"
+        >
+
+            <div class="posto-card-header">
+
+                <div class="posto-identification">
+
+                    <div class="posto-icon">
+                        📻
+                    </div>
+
+                    <div>
+
+                        <h3>
+                            Piraí
+                        </h3>
+
+                        <span class="posto-code">
+                            POSTO PIRAÍ
+                        </span>
+
+                    </div>
+
+                </div>
+
+                <div
+                    class="posto-status checking"
+                    id="status-pirai"
+                >
+                    <span class="status-dot"></span>
+                    <span class="status-text">
+                        Verificando
+                    </span>
+                </div>
+
+            </div>
+
+
+            <div class="posto-body">
+
+                <div class="player-status">
+
+                    <span class="info-label">
+                        Player
+                    </span>
+
+                    <strong id="player-pirai">
+                        Aguardando verificação
+                    </strong>
+
+                </div>
+
+
+                <div class="posto-times">
+
+                    <div class="time-item">
+
+                        <span class="info-label">
+                            Última verificação
+                        </span>
+
+                        <strong id="last-pirai">
+                            --
+                        </strong>
+
+                    </div>
+
+
+                    <div class="time-item">
+
+                        <span class="info-label">
+                            Último evento
+                        </span>
+
+                        <strong id="event-pirai">
+                            --
+                        </strong>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <div class="posto-card-footer">
+
+                <span
+                    class="event-indicator"
+                    id="indicator-pirai"
+                >
+                    Aguardando dados...
+                </span>
+
+                <a
+                    class="btn-open"
+                    href="https://postosgraciosa.github.io/monitor-radio-graciosa/?posto=pirai"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                >
+                    Abrir monitor
+                </a>
+
+            </div>
+
+        </article>
+
+
+    </section>
+
+
+    <!-- =================================================
+         HISTÓRICO GERAL
+    ================================================== -->
+
+    <section class="history-section">
+
+        <div class="section-header">
+
+            <div>
+
+                <h2>
+                    Últimos eventos
+                </h2>
+
+                <p>
+                    Ocorrências recentes dos monitores
+                </p>
+
+            </div>
+
+            <button
+                type="button"
+                class="btn-clear-history"
+                id="btnClearHistory"
+            >
+                Limpar histórico
+            </button>
+
+        </div>
+
+
+        <div
+            class="history-list"
+            id="historyList"
+        >
+
+            <div class="history-empty">
+                <span>📋</span>
+
+                <p>
+                    Nenhum evento registrado.
+                </p>
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <!-- =================================================
+         RODAPÉ
+    ================================================== -->
+
+    <footer class="footer">
+
+        <div>
+            <strong>
+                Postos Graciosa
+            </strong>
+
+            <span>
+                •
+            </span>
+
+            Monitoramento de Rádio
+        </div>
+
+        <div>
+            Sistema de monitoramento
+        </div>
+
+    </footer>
+
+</main>
+
+
+<!-- =====================================================
+     JAVASCRIPT
+====================================================== -->
+
+<script
+    src="app.js"
+    defer
+></script>
+
+
+</body>
+
+</html>
